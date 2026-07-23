@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Pola — photos instantanées</title>
+  <meta name="description" content="Prends une photo, place-la dans un vrai cadre Polaroid avec un rendu film instantané, exporte en 4:5 pour Instagram.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/manifest-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Pola">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Viseur ─────────────────────────────────────────── -->
+  <main id="shoot" class="screen is-active" aria-label="Viseur">
+    <header class="topbar">
+      <img class="wordmark" src="assets/pola-logo.svg" alt="Pola">
+      <span class="topbar-film" id="film-label">600</span>
+    </header>
+
+    <div class="stage">
+      <div class="polaroid-live" id="polaroid-live">
+        <div class="polaroid-live-window">
+          <video id="camera" autoplay playsinline muted></video>
+          <div class="camera-off" id="camera-off" hidden>
+            <p>Caméra indisponible.<br>Importe une photo pour commencer.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="film-strip" id="film-strip" role="radiogroup" aria-label="Film"></div>
+
+    <div class="controls">
+      <button class="ctrl" id="btn-import" aria-label="Importer une photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Zm2-1.4 3.6-4.2a1 1 0 0 1 1.5 0l2.6 3 1.5-1.7a1 1 0 0 1 1.5 0l3.3 3.9V5H6ZM15.5 10a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z"/></svg>
+      </button>
+      <button class="shutter" id="btn-shutter" aria-label="Déclencher">
+        <span class="shutter-ring" aria-hidden="true"></span>
+      </button>
+      <button class="ctrl" id="btn-flip" aria-label="Changer de caméra">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2.5L8 6l4 3.5V7a5.5 5.5 0 1 1-5.4 6.6l-1.96.4A7.5 7.5 0 1 0 12 5Z"/></svg>
+      </button>
+    </div>
+    <input type="file" id="file-input" accept="image/*" hidden>
+  </main>
+
+  <!-- ── Éditeur ────────────────────────────────────────── -->
+  <section id="edit" class="screen" aria-label="Éditeur">
+    <header class="topbar">
+      <button class="back" id="btn-back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 8 11.5l6.5 6.5 1.4-1.4-5.1-5.1 5.1-5.1L14.5 5Z"/></svg>
+        Nouvelle photo
+      </button>
+      <span class="topbar-film" id="edit-film-label">600</span>
+    </header>
+
+    <div class="stage stage-edit">
+      <div class="polaroid-out" id="polaroid-out">
+        <canvas id="render-canvas"></canvas>
+        <div class="dev-overlay" id="dev-overlay" hidden></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="chip-row" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>
+      <div class="chip-row" id="frame-strip" role="radiogroup" aria-label="Cadre"></div>
+
+      <div class="export-row">
+        <div class="seg" role="radiogroup" aria-label="Format d’export" id="format-seg">
+          <button class="seg-btn is-on" data-format="polaroid" role="radio" aria-checked="true">Polaroid</button>
+          <button class="seg-btn" data-format="ig-blanc" role="radio" aria-checked="false">4:5 blanc</button>
+          <button class="seg-btn" data-format="ig-noir" role="radio" aria-checked="false">4:5 noir</button>
+        </div>
+        <div class="export-actions">
+          <button class="btn btn-ghost" id="btn-share" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 7.6 7.2 9 8.6l2-2V15h2V6.6l2 2 1.4-1.4L12 2.8ZM5 10v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9h-2v9H7v-9H5Z"/></svg>
+            Partager
+          </button>
+          <button class="btn btn-primary" id="btn-download">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2 7.6 10.8 9 9.4l2 2V3h2v8.4l2-2 1.4 1.4-4.4 4.4ZM5 19v2h14v-2H5Z"/></svg>
+            Télécharger
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="flash" id="flash" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

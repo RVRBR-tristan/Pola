@@ -1,0 +1,343 @@
+/* ── Pola · marque : blanc, gris clair, orange #FF872C, formes rondes ── */
+
+:root {
+  --bg: oklch(1 0 0);
+  --surface: oklch(0.945 0 0);
+  --surface-2: oklch(0.895 0 0);
+  --line: oklch(0.85 0 0);
+  --ink: oklch(0.24 0 0);
+  --muted: oklch(0.48 0 0);
+  --brand: #ff872c;
+  --brand-press: #f0761a;
+  --radius: 18px;
+  --z-overlay: 10;
+  --z-flash: 20;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Écrans ── */
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  padding-top: var(--sat);
+  padding-bottom: max(var(--sab), 12px);
+}
+.screen.is-active { display: flex; }
+
+/* ── Barre haute ── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 6px;
+  min-height: 52px;
+}
+
+.wordmark { height: 20px; width: auto; display: block; }
+
+.topbar-film {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 8px 12px 8px 6px;
+  margin-left: -6px;
+  border-radius: 999px;
+}
+.back svg { width: 20px; height: 20px; fill: currentColor; }
+.back:active { background: var(--surface); }
+
+/* ── Scène ── */
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+}
+
+/* Polaroid live : le viseur est déjà un tirage */
+.polaroid-live {
+  background: #f7f5f0;
+  border-radius: 4px;
+  box-shadow: 0 24px 55px rgba(30, 20, 5, 0.28), 0 4px 14px rgba(30, 20, 5, 0.14);
+  /* géométrie 600 : marges 5.1% / 5.7% / 21.5% de la largeur */
+  padding: 5.7% 5.1% 21.5%;
+  width: min(100%, 46vh);
+}
+.polaroid-live-window {
+  position: relative;
+  aspect-ratio: 1;
+  background: #101010;
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.polaroid-live-window video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 200ms ease-out;
+}
+.polaroid-live-window video.is-mirrored { transform: scaleX(-1); }
+
+.camera-off {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13.5px;
+  padding: 16px;
+}
+
+/* ── Bandes de choix ── */
+
+.film-strip, .chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 20px;
+  scrollbar-width: none;
+  flex: none;
+}
+.film-strip::-webkit-scrollbar, .chip-row::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex: none;
+  padding: 8px 15px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  min-height: 37px;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.chip[aria-checked="true"] {
+  background: var(--brand);
+  color: #fff;
+}
+.chip:focus-visible, .seg-btn:focus-visible, .btn:focus-visible,
+.ctrl:focus-visible, .shutter:focus-visible, .back:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ── Commandes du viseur ── */
+
+.controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  padding: 10px 0 8px;
+}
+
+.ctrl {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease-out;
+}
+.ctrl svg { width: 24px; height: 24px; fill: var(--ink); }
+.ctrl:active { background: var(--surface-2); }
+
+.shutter {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: var(--brand);
+  position: relative;
+  transition: transform 120ms ease-out, background 120ms ease-out;
+  box-shadow: 0 6px 18px rgba(255, 135, 44, 0.45);
+}
+.shutter-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.shutter:active { transform: scale(0.92); background: var(--brand-press); }
+.shutter:disabled { opacity: 0.4; box-shadow: none; }
+
+/* ── Éditeur ── */
+
+.stage-edit { padding: 12px 28px; }
+
+.polaroid-out {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  filter: drop-shadow(0 22px 45px rgba(30, 20, 5, 0.3));
+}
+#render-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+/* Développement : la fenêtre image émerge de la chimie */
+.dev-overlay {
+  position: absolute;
+  z-index: var(--z-overlay);
+  background: #23251f;
+  pointer-events: none;
+  animation: develop 5.5s cubic-bezier(0.3, 0, 0.4, 1) forwards;
+}
+@keyframes develop {
+  0%   { opacity: 1; background: #1b1d18; }
+  30%  { opacity: 0.92; background: #3d3a30; }
+  60%  { opacity: 0.55; background: #6e675a; }
+  100% { opacity: 0; background: #a99f8c; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-overlay { animation-duration: 400ms; }
+}
+
+/* ── Panneau ── */
+
+.panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+.chip-row { padding: 6px 20px; }
+
+.export-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 20px 6px;
+}
+
+.seg {
+  display: flex;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+.seg-btn {
+  flex: 1;
+  padding: 9px 6px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  min-height: 40px;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.seg-btn.is-on {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+}
+
+.export-actions { display: flex; gap: 10px; }
+
+.btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 52px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: transform 120ms ease-out, background 150ms ease-out;
+}
+.btn svg { width: 19px; height: 19px; fill: currentColor; }
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 5px 16px rgba(255, 135, 44, 0.4);
+}
+.btn-primary:active { background: var(--brand-press); }
+.btn-ghost { background: var(--surface); color: var(--ink); }
+.btn-ghost:active { background: var(--surface-2); }
+.btn.is-done { background: oklch(0.62 0.14 150); }
+
+/* ── Flash de capture ── */
+
+.flash {
+  position: fixed;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: var(--z-flash);
+}
+.flash.is-firing { animation: fire 380ms ease-out; }
+@keyframes fire {
+  0% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash.is-firing { animation-duration: 120ms; }
+}
+
+/* ── Écrans larges : l'app reste une carte centrée ── */
+
+@media (min-width: 700px) {
+  .screen { max-width: 520px; margin: 0 auto; }
+  body { background: oklch(0.955 0 0); }
+  .screen.is-active { background: var(--bg); }
+}

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pola",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4173", "--directory", "/Users/tristangevaux/Documents/GitHub/Pola"],
+      "port": 4173,
+      "autoPort": false
+    }
+  ]
+}
