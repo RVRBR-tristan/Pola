@@ -69,6 +69,15 @@ export const FRAMES = [
     paper: '#c8453a',
   },
   {
+    id: 'vieilli',
+    name: 'Vieilli',
+    W: 1123, H: 1483,
+    img: { x: 113, y: 116, w: 909, h: 989 },
+    scale: 1.5,
+    overlay: 'assets/frame-vieilli.png',
+    paper: '#efe8d4',
+  },
+  {
     id: 'film120',
     name: 'Film 120',
     W: 1062, H: 974,
