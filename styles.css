@@ -72,6 +72,26 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.topbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease-out;
+}
+.icon-btn svg { width: 19px; height: 19px; fill: var(--ink); }
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 .back {
   display: inline-flex;
   align-items: center;
@@ -394,6 +414,95 @@ button {
 }
 .btn-primary:active { background: var(--brand-press); }
 .btn.is-done { background: oklch(0.62 0.14 150); }
+
+/* ── Galerie ── */
+
+.gallery-title { font-size: 15px; font-weight: 700; }
+
+.select-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand);
+  padding: 8px 10px;
+  margin-right: -10px;
+  border-radius: 10px;
+  min-height: 40px;
+}
+.select-btn:active { background: var(--surface); }
+.select-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.gallery-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.g-item {
+  position: relative;
+  padding: 0;
+  border-radius: 6px;
+  transition: transform 120ms ease-out;
+}
+.g-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 10px rgba(30, 20, 5, 0.22));
+}
+.g-item:active { transform: scale(0.96); }
+.g-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+.g-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.g-check svg { width: 14px; height: 14px; fill: #fff; display: none; }
+.is-selecting .g-check { display: inline-flex; }
+.g-item.is-selected .g-check { background: var(--brand); border-color: #fff; }
+.g-item.is-selected .g-check svg { display: block; }
+.g-item.is-selected img { outline: 3px solid var(--brand); outline-offset: -1px; border-radius: 4px; }
+
+.gallery-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.55;
+  padding: 48px 24px;
+}
+
+.gallery-actions {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  padding: 10px 20px 6px;
+}
+.gallery-actions[hidden] { display: none; }
+.btn-soft { background: var(--surface); color: var(--ink); }
+.btn-soft:active { background: var(--surface-2); }
+.btn-danger {
+  background: oklch(0.55 0.19 27);
+  color: #fff;
+}
+.btn-danger:disabled { opacity: 0.4; }
+.btn-danger.is-armed { background: oklch(0.45 0.19 27); }
 
 /* ── Flash de capture ── */
 

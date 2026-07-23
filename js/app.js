@@ -1,10 +1,15 @@
 import { PRESETS, applyPreset } from './presets.js';
 import { FRAMES, renderPolaroid, renderInstagram, assetsReady } from './frames.js';
+import { putShot, getShot, getAllShots, deleteShots } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 
 const state = {
   source: null,          // canvas plein format de la prise de vue
+  sourceBlob: null,      // même image en blob JPEG, pour la galerie
+  currentId: null,       // entrée de galerie en cours d'édition
+  createdAt: 0,
+  fromGallery: false,    // le retour de l'éditeur mène-t-il à la galerie ?
   preset: PRESETS[0],
   frame: FRAMES[0],
   expo: 0,       // -100..100 → ± 0,8 EV
@@ -111,6 +116,7 @@ async function render() {
     });
     renderPolaroid(polaroidCanvas, state.frame, photo);
     updateDisplay();
+    schedulePersist();
   }, 0);
 }
 
@@ -153,22 +159,124 @@ function develop() {
   o.addEventListener('animationend', () => { o.hidden = true; }, { once: true });
 }
 
+/* ── Galerie : persistance ──────────────────────────────── */
+
+let persistTimer;
+function schedulePersist() {
+  if (!state.currentId) return;
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(persistCurrent, 700);
+}
+
+async function persistCurrent() {
+  if (!state.currentId || !state.sourceBlob) return;
+  const thumb = await makeThumb();
+  await putShot({
+    id: state.currentId,
+    createdAt: state.createdAt,
+    updatedAt: Date.now(),
+    source: state.sourceBlob,
+    thumb,
+    settings: {
+      presetId: state.preset.id,
+      frameId: state.frame.id,
+      expo: state.expo,
+      contrast: state.contrast,
+      igSize: state.igSize,
+      format: state.format,
+      seed: state.seed,
+    },
+  }).catch(() => {});
+}
+
+function makeThumb() {
+  const max = 420;
+  const k = Math.min(1, max / Math.max(polaroidCanvas.width, polaroidCanvas.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(polaroidCanvas.width * k));
+  c.height = Math.max(1, Math.round(polaroidCanvas.height * k));
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(polaroidCanvas, 0, 0, c.width, c.height);
+  return new Promise((res) => c.toBlob(res, 'image/png'));
+}
+
+// Restaure les réglages d'une entrée de galerie dans toute l'interface.
+function applySettings(s) {
+  state.preset = PRESETS.find((p) => p.id === s.presetId) || PRESETS[0];
+  state.frame = FRAMES.find((f) => f.id === s.frameId) || FRAMES[0];
+  state.seed = s.seed || state.seed;
+  buildChips($('film-strip'), PRESETS, state.preset, pickPreset);
+  buildChips($('edit-film-strip'), PRESETS, state.preset, pickPreset);
+  buildChips($('frame-strip'), FRAMES, state.frame, pickFrame);
+  buildChips($('shoot-frame-strip'), FRAMES, state.frame, pickFrame);
+  syncPresetUi();
+  updateLiveFrame();
+  setAdjust('expo', s.expo || 0);
+  setAdjust('contrast', s.contrast || 0);
+  state.igSize = s.igSize ?? 80;
+  $('adj-size').value = state.igSize;
+  $('adj-size-val').textContent = String(state.igSize);
+  state.format = s.format || 'polaroid';
+  document.querySelectorAll('#format-seg .seg-btn').forEach((b) => {
+    const on = b.dataset.format === state.format;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+  syncIgControls();
+}
+
 /* ── Navigation ─────────────────────────────────────────── */
 
-function showEditor(source) {
+function showScreen(id) {
+  for (const s of ['shoot', 'edit', 'gallery']) $(s).classList.toggle('is-active', s === id);
+}
+
+function canvasJpeg(c) {
+  return new Promise((res) => c.toBlob(res, 'image/jpeg', 0.92));
+}
+
+// Nouvelle photo (capture ou import) : nouvelle entrée de galerie.
+async function showEditor(source) {
   state.source = source;
   state.seed = (Math.random() * 0xffffffff) >>> 0;
+  state.currentId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  state.createdAt = Date.now();
+  state.fromGallery = false;
   setAdjust('expo', 0);
   setAdjust('contrast', 0);
   stopCamera();
-  $('shoot').classList.remove('is-active');
-  $('edit').classList.add('is-active');
+  showScreen('edit');
   render().then(develop);
+  state.sourceBlob = await canvasJpeg(source);
+  schedulePersist();
+}
+
+// Réédition d'un polaroid conservé.
+function openShot(shot) {
+  const url = URL.createObjectURL(shot.source);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    c.getContext('2d').drawImage(img, 0, 0);
+    state.source = c;
+    state.sourceBlob = shot.source;
+    state.currentId = shot.id;
+    state.createdAt = shot.createdAt;
+    state.fromGallery = true;
+    applySettings(shot.settings || {});
+    stopCamera();
+    showScreen('edit');
+    render();
+  };
+  img.src = url;
 }
 
 function showShoot() {
-  $('edit').classList.remove('is-active');
-  $('shoot').classList.add('is-active');
+  showScreen('shoot');
   startCamera();
 }
 
@@ -287,7 +395,133 @@ $('file-input').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
-$('btn-back').addEventListener('click', showShoot);
+$('btn-back').addEventListener('click', () => {
+  clearTimeout(persistTimer);
+  persistCurrent();
+  if (state.fromGallery) showGallery();
+  else showShoot();
+});
+
+/* ── Galerie : affichage & sélection ────────────────────── */
+
+const gallerySel = new Set();
+let selecting = false;
+let galleryUrls = [];
+
+async function showGallery() {
+  stopCamera();
+  exitSelection();
+  showScreen('gallery');
+  await refreshGallery();
+}
+
+async function refreshGallery() {
+  const grid = $('gallery-grid');
+  for (const u of galleryUrls) URL.revokeObjectURL(u);
+  galleryUrls = [];
+  grid.textContent = '';
+  let shots = [];
+  try { shots = await getAllShots(); } catch { /* stockage indisponible */ }
+  shots.sort((a, b) => b.createdAt - a.createdAt);
+  $('gallery-empty').hidden = shots.length > 0;
+  $('btn-select').hidden = shots.length === 0;
+  for (const shot of shots) {
+    const b = document.createElement('button');
+    b.className = 'g-item';
+    b.setAttribute('role', 'listitem');
+    b.dataset.id = shot.id;
+    const img = new Image();
+    const url = URL.createObjectURL(shot.thumb || shot.source);
+    galleryUrls.push(url);
+    img.src = url;
+    img.alt = 'Polaroid';
+    b.appendChild(img);
+    const check = document.createElement('span');
+    check.className = 'g-check';
+    check.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6 10-10-1.4-1.4-8.6 8.6Z"/></svg>';
+    b.appendChild(check);
+    b.addEventListener('click', () => {
+      if (selecting) {
+        toggleSelected(shot.id, b);
+      } else {
+        getShot(shot.id).then((full) => full && openShot(full));
+      }
+    });
+    grid.appendChild(b);
+  }
+}
+
+function toggleSelected(id, el) {
+  if (gallerySel.has(id)) gallerySel.delete(id);
+  else gallerySel.add(id);
+  el.classList.toggle('is-selected', gallerySel.has(id));
+  syncDeleteButton();
+}
+
+function syncDeleteButton() {
+  const btn = $('btn-delete');
+  btn.disabled = gallerySel.size === 0;
+  btn.classList.remove('is-armed');
+  btn.textContent = gallerySel.size > 0 ? `Supprimer (${gallerySel.size})` : 'Supprimer';
+  const all = document.querySelectorAll('.g-item').length;
+  $('btn-select-all').textContent =
+    gallerySel.size === all && all > 0 ? 'Tout désélectionner' : 'Tout sélectionner';
+}
+
+function exitSelection() {
+  selecting = false;
+  gallerySel.clear();
+  $('gallery-grid').classList.remove('is-selecting');
+  $('gallery-actions').hidden = true;
+  $('btn-select').textContent = 'Sélectionner';
+  document.querySelectorAll('.g-item.is-selected').forEach((el) => el.classList.remove('is-selected'));
+}
+
+$('btn-gallery').addEventListener('click', showGallery);
+$('btn-gallery-back').addEventListener('click', showShoot);
+
+$('btn-select').addEventListener('click', () => {
+  if (selecting) {
+    exitSelection();
+  } else {
+    selecting = true;
+    $('gallery-grid').classList.add('is-selecting');
+    $('gallery-actions').hidden = false;
+    $('btn-select').textContent = 'Annuler';
+    syncDeleteButton();
+  }
+});
+
+$('btn-select-all').addEventListener('click', () => {
+  const items = document.querySelectorAll('.g-item');
+  const selectAll = gallerySel.size !== items.length;
+  items.forEach((el) => {
+    const id = el.dataset.id;
+    if (selectAll) gallerySel.add(id);
+    else gallerySel.delete(id);
+    el.classList.toggle('is-selected', selectAll);
+  });
+  syncDeleteButton();
+});
+
+// Suppression en deux temps : un premier appui arme, le second confirme.
+$('btn-delete').addEventListener('click', async () => {
+  const btn = $('btn-delete');
+  if (gallerySel.size === 0) return;
+  if (!btn.classList.contains('is-armed')) {
+    btn.classList.add('is-armed');
+    btn.textContent = `Confirmer (${gallerySel.size})`;
+    setTimeout(() => {
+      if (btn.classList.contains('is-armed')) syncDeleteButton();
+    }, 3500);
+    return;
+  }
+  const ids = [...gallerySel];
+  await deleteShots(ids).catch(() => {});
+  if (ids.includes(state.currentId)) state.currentId = null;
+  exitSelection();
+  await refreshGallery();
+});
 
 /* ── Réglages exposition / contraste ── */
 

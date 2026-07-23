@@ -21,7 +21,12 @@
   <main id="shoot" class="screen is-active" aria-label="Viseur">
     <header class="topbar">
       <img class="wordmark" src="assets/pola-logo.svg" alt="Pola">
-      <span class="topbar-film" id="film-label">600</span>
+      <span class="topbar-right">
+        <span class="topbar-film" id="film-label">600</span>
+        <button class="icon-btn" id="btn-gallery" aria-label="Galerie">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z"/></svg>
+        </button>
+      </span>
     </header>
 
     <div class="stage">
@@ -103,6 +108,30 @@
           Télécharger
         </button>
       </div>
+    </div>
+  </section>
+
+  <!-- ── Galerie ────────────────────────────────────────── -->
+  <section id="gallery" class="screen" aria-label="Galerie">
+    <header class="topbar">
+      <button class="back" id="btn-gallery-back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 8 11.5l6.5 6.5 1.4-1.4-5.1-5.1 5.1-5.1L14.5 5Z"/></svg>
+        Caméra
+      </button>
+      <span class="gallery-title">Galerie</span>
+      <button class="select-btn" id="btn-select">Sélectionner</button>
+    </header>
+
+    <div class="gallery-scroll">
+      <div class="gallery-grid" id="gallery-grid" role="list"></div>
+      <p class="gallery-empty" id="gallery-empty" hidden>
+        Aucun polaroid pour l'instant.<br>Tes photos se rangeront ici automatiquement.
+      </p>
+    </div>
+
+    <div class="gallery-actions" id="gallery-actions" hidden>
+      <button class="btn btn-soft" id="btn-select-all">Tout sélectionner</button>
+      <button class="btn btn-danger" id="btn-delete" disabled>Supprimer</button>
     </div>
   </section>
 

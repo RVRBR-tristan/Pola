@@ -9,6 +9,7 @@ PWA appareil photo : capture ou importe une image, place-la dans un cadre Polaro
 - **Cadres photoréalistes** : Polaroid 600, Instax Mini et Instax Brut — de vrais scans à fenêtre transparente (`assets/frame-*.png`), la photo est composée sous l'alpha du scan. Géométries d'après les formats réels.
 - **Animation de développement** après le déclenchement (respecte `prefers-reduced-motion`).
 - **Export** : PNG haute résolution (polaroid seul) ou 2160 × 2700 (4:5), téléchargement direct.
+- **Galerie** : chaque photo est conservée localement (IndexedDB) avec sa source pleine résolution et ses réglages — rééditable à tout moment ; sélection unitaire ou de masse, suppression avec confirmation.
 - **PWA** : installable, hors-ligne (service worker), plein écran.
 
 ## Stack
