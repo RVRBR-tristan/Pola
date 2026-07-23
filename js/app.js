@@ -218,14 +218,6 @@ async function download() {
   setTimeout(() => btn.classList.remove('is-done'), 1200);
 }
 
-async function share() {
-  const blob = await toBlob(exportCanvas());
-  const file = new File([blob], `pola-${stamp()}.png`, { type: 'image/png' });
-  try {
-    await navigator.share({ files: [file] });
-  } catch { /* partage annulé */ }
-}
-
 /* ── Écouteurs ──────────────────────────────────────────── */
 
 $('btn-shutter').addEventListener('click', () => {
@@ -294,10 +286,6 @@ $('format-seg').addEventListener('click', (e) => {
 });
 
 $('btn-download').addEventListener('click', download);
-if (navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] })) {
-  $('btn-share').hidden = false;
-  $('btn-share').addEventListener('click', share);
-}
 
 /* ── Démarrage ──────────────────────────────────────────── */
 
