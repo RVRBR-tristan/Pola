@@ -300,6 +300,7 @@ button {
   gap: 12px;
   min-height: 36px;
 }
+.adjust-row[hidden] { display: none; }
 .adjust-row label {
   flex: none;
   width: 84px;
