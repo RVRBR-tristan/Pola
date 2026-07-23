@@ -10,7 +10,6 @@ const state = {
   expo: 0,       // -100..100 → ± 0,8 EV
   contrast: 0,   // -100..100 → ± 0,5
   igSize: 80,    // taille du polaroid dans le canevas 4:5 (40..100)
-  igShadow: false,
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -125,10 +124,7 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', {
-      size: state.igSize,
-      shadow: state.igShadow,
-    });
+    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', { size: state.igSize });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -233,10 +229,7 @@ function updateLiveFrame() {
 
 function exportCanvas() {
   if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', {
-    size: state.igSize,
-    shadow: state.igShadow,
-  });
+  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', { size: state.igSize });
 }
 
 function toBlob(canvas) {
@@ -331,15 +324,8 @@ $('adj-size-val').addEventListener('click', () => {
   $('adj-size-val').textContent = '80';
   if (state.source) updateDisplay();
 });
-$('toggle-shadow').addEventListener('change', (e) => {
-  state.igShadow = e.target.checked;
-  if (state.source) updateDisplay();
-});
-
 function syncIgControls() {
-  const ig = state.format !== 'polaroid';
-  $('size-row').hidden = !ig;
-  $('shadow-row').hidden = !ig;
+  $('size-row').hidden = state.format === 'polaroid';
 }
 
 $('format-seg').addEventListener('click', (e) => {

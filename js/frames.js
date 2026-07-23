@@ -117,8 +117,7 @@ export function renderPolaroid(target, frame, photo) {
 }
 
 // Export Instagram 4:5 : polaroid droit, centré, fond blanc ou noir.
-// `opts.size` (40–100) : taille homogène du tirage dans le canevas ;
-// `opts.shadow` : ombre portée optionnelle.
+// `opts.size` (40–100) : taille homogène du tirage dans le canevas.
 export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   const W = 2160, H = 2700;
   const out = document.createElement('canvas');
@@ -134,14 +133,7 @@ export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   const w = polaroidCanvas.width * scale;
   const h = polaroidCanvas.height * scale;
 
-  ctx.save();
-  if (opts.shadow) {
-    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-    ctx.shadowBlur = 60;
-    ctx.shadowOffsetY = 26;
-  }
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(polaroidCanvas, (W - w) / 2, (H - h) / 2, w, h);
-  ctx.restore();
   return out;
 }
