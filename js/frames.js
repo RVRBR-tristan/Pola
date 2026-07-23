@@ -4,8 +4,6 @@
 // réels : Polaroid 600 (88 × 107 mm, image 79 × 79) et Instax Mini
 // (54 × 86 mm, image 46 × 62).
 
-import { mulberry32 } from './presets.js';
-
 export const FRAMES = [
   {
     id: 'p600',
@@ -118,8 +116,10 @@ export function renderPolaroid(target, frame, photo) {
   return target;
 }
 
-// Export Instagram 4:5 : polaroid centré, ombre portée, fond blanc ou noir.
-export function renderInstagram(polaroidCanvas, dark, seed) {
+// Export Instagram 4:5 : polaroid droit, centré, fond blanc ou noir.
+// `opts.size` (40–100) : taille homogène du tirage dans le canevas ;
+// `opts.shadow` : ombre portée optionnelle.
+export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   const W = 2160, H = 2700;
   const out = document.createElement('canvas');
   out.width = W;
@@ -128,21 +128,20 @@ export function renderInstagram(polaroidCanvas, dark, seed) {
   ctx.fillStyle = dark ? '#0c0c0d' : '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  const rnd = mulberry32(seed ^ 0x51ab3c);
-  const angle = (rnd() * 2 - 1) * 0.028; // ± 1.6°
-  const targetH = H * 0.82;
-  const scale = Math.min(targetH / polaroidCanvas.height, (W * 0.86) / polaroidCanvas.width);
+  const size = (opts.size ?? 80) / 100;
+  const fit = Math.min((W * 0.94) / polaroidCanvas.width, (H * 0.94) / polaroidCanvas.height);
+  const scale = fit * size;
   const w = polaroidCanvas.width * scale;
   const h = polaroidCanvas.height * scale;
 
   ctx.save();
-  ctx.translate(W / 2, H / 2);
-  ctx.rotate(angle);
-  ctx.shadowColor = 'rgba(0,0,0,0.4)';
-  ctx.shadowBlur = 70;
-  ctx.shadowOffsetY = 34;
+  if (opts.shadow) {
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 60;
+    ctx.shadowOffsetY = 26;
+  }
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(polaroidCanvas, -w / 2, -h / 2, w, h);
+  ctx.drawImage(polaroidCanvas, (W - w) / 2, (H - h) / 2, w, h);
   ctx.restore();
   return out;
 }

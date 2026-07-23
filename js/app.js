@@ -9,6 +9,8 @@ const state = {
   frame: FRAMES[0],
   expo: 0,       // -100..100 → ± 0,8 EV
   contrast: 0,   // -100..100 → ± 0,5
+  igSize: 80,    // taille du polaroid dans le canevas 4:5 (40..100)
+  igShadow: false,
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -123,7 +125,10 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', state.seed);
+    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', {
+      size: state.igSize,
+      shadow: state.igShadow,
+    });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -207,14 +212,31 @@ function pickPreset(p) {
 function pickFrame(f) {
   state.frame = f;
   syncPresetUi();
+  buildChips($('shoot-frame-strip'), FRAMES, f, pickFrame);
+  buildChips($('frame-strip'), FRAMES, f, pickFrame);
+  updateLiveFrame();
   render();
+}
+
+// Le viseur épouse le cadre choisi : vidéo sous le scan, dans sa fenêtre.
+function updateLiveFrame() {
+  const f = state.frame;
+  $('live-frame').src = f.overlay;
+  const w = $('live-window');
+  w.style.left = `${(f.img.x / f.W) * 100}%`;
+  w.style.top = `${(f.img.y / f.H) * 100}%`;
+  w.style.width = `${(f.img.w / f.W) * 100}%`;
+  w.style.height = `${(f.img.h / f.H) * 100}%`;
 }
 
 /* ── Export ─────────────────────────────────────────────── */
 
 function exportCanvas() {
   if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', state.seed);
+  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', {
+    size: state.igSize,
+    shadow: state.igShadow,
+  });
 }
 
 function toBlob(canvas) {
@@ -296,6 +318,30 @@ for (const key of Object.keys(ADJUST_IDS)) {
   });
 }
 
+/* ── Réglages du canevas 4:5 (taille, ombre) ── */
+
+$('adj-size').addEventListener('input', (e) => {
+  state.igSize = Number(e.target.value);
+  $('adj-size-val').textContent = String(state.igSize);
+  if (state.source) updateDisplay();
+});
+$('adj-size-val').addEventListener('click', () => {
+  state.igSize = 80;
+  $('adj-size').value = 80;
+  $('adj-size-val').textContent = '80';
+  if (state.source) updateDisplay();
+});
+$('toggle-shadow').addEventListener('change', (e) => {
+  state.igShadow = e.target.checked;
+  if (state.source) updateDisplay();
+});
+
+function syncIgControls() {
+  const ig = state.format !== 'polaroid';
+  $('size-row').hidden = !ig;
+  $('shadow-row').hidden = !ig;
+}
+
 $('format-seg').addEventListener('click', (e) => {
   const btn = e.target.closest('.seg-btn');
   if (!btn) return;
@@ -305,6 +351,7 @@ $('format-seg').addEventListener('click', (e) => {
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-checked', String(on));
   });
+  syncIgControls();
   if (state.source) updateDisplay();
 });
 
@@ -315,7 +362,10 @@ $('btn-download').addEventListener('click', download);
 buildChips($('film-strip'), PRESETS, state.preset, pickPreset);
 buildChips($('edit-film-strip'), PRESETS, state.preset, pickPreset);
 buildChips($('frame-strip'), FRAMES, state.frame, pickFrame);
+buildChips($('shoot-frame-strip'), FRAMES, state.frame, pickFrame);
 syncPresetUi();
+updateLiveFrame();
+syncIgControls();
 startCamera();
 
 document.addEventListener('visibilitychange', () => {

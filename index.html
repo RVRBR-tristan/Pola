@@ -26,16 +26,18 @@
 
     <div class="stage">
       <div class="polaroid-live" id="polaroid-live">
-        <div class="polaroid-live-window">
+        <div class="polaroid-live-window" id="live-window">
           <video id="camera" autoplay playsinline muted></video>
           <div class="camera-off" id="camera-off" hidden>
             <p>Caméra indisponible.<br>Importe une photo pour commencer.</p>
           </div>
         </div>
+        <img class="polaroid-live-frame" id="live-frame" src="assets/frame-600.png" alt="">
       </div>
     </div>
 
     <div class="film-strip" id="film-strip" role="radiogroup" aria-label="Film"></div>
+    <div class="chip-row" id="shoot-frame-strip" role="radiogroup" aria-label="Cadre"></div>
 
     <div class="controls">
       <button class="ctrl" id="btn-import" aria-label="Importer une photo">
@@ -82,6 +84,15 @@
           <label for="adj-contrast">Contraste</label>
           <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
           <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
+        </div>
+        <div class="adjust-row" id="size-row" hidden>
+          <label for="adj-size">Taille</label>
+          <input type="range" id="adj-size" min="40" max="100" value="80" step="1">
+          <button class="adjust-val" id="adj-size-val" title="Réinitialiser">80</button>
+        </div>
+        <div class="adjust-row adjust-row-toggle" id="shadow-row" hidden>
+          <label for="toggle-shadow">Ombre portée</label>
+          <input type="checkbox" id="toggle-shadow" class="switch">
         </div>
       </div>
 
