@@ -33,18 +33,31 @@ const polaroidCanvas = document.createElement('canvas');
 
 /* ── Caméra ─────────────────────────────────────────────── */
 
+// Jeton de génération : deux démarrages peuvent se chevaucher (retour de
+// l'éditeur + visibilitychange). Sans ce garde-fou, l'appel perdant
+// affichait « caméra indisponible » par-dessus le flux de celui qui
+// avait réussi.
+let camGen = 0;
 async function startCamera() {
+  const gen = ++camGen;
   stopCamera();
   try {
-    state.stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: state.facing, width: { ideal: 2160 }, height: { ideal: 2160 } },
       audio: false,
     });
-    video.srcObject = state.stream;
+    if (gen !== camGen) {
+      // Un démarrage plus récent a pris la main : on libère ce flux.
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    state.stream = stream;
+    video.srcObject = stream;
     video.classList.toggle('is-mirrored', state.facing === 'user');
     $('camera-off').hidden = true;
     $('btn-shutter').disabled = false;
   } catch {
+    if (gen !== camGen || state.stream) return; // un flux actif existe déjà
     $('camera-off').hidden = false;
     $('btn-shutter').disabled = true;
   }
@@ -740,6 +753,13 @@ syncPresetUi();
 updateLiveFrame();
 syncIgControls();
 startCamera();
+
+// Ceinture et bretelles : dès que la vidéo joue, le message d'erreur
+// n'a plus lieu d'être.
+video.addEventListener('playing', () => {
+  $('camera-off').hidden = true;
+  $('btn-shutter').disabled = false;
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopCamera();

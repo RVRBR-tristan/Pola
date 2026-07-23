@@ -176,7 +176,7 @@ function buildLut(preset, ch, adjust) {
 // Applique le rendu film sur un canvas (modifie le canvas en place).
 // `adjust` : réglages utilisateur — expo (EV), contrast (-1..1, s'ajoute
 // au film), sat (0..1.6, absolu, remplace celui du film), grain (alpha
-// 0..0.4, absolu), blur (0..1, flou radial type objectif plastique).
+// 0..0.4, absolu), blur (0..1, flou gaussien).
 export function applyPreset(canvas, preset, seed, adjust) {
   const ctx = canvas.getContext('2d');
   const { width: w, height: h } = canvas;
@@ -233,31 +233,31 @@ export function applyPreset(canvas, preset, seed, adjust) {
   }
   ctx.putImageData(img, 0, 0);
 
-  // 2b — Flou radial : centre net, bords fondus (objectif plastique).
+  // 2b — Flou gaussien uniforme.
   const blurAmt = adjust?.blur || 0;
   if (blurAmt > 0) {
-    const small = document.createElement('canvas');
-    const k = 1 / (2 + blurAmt * 7);
-    small.width = Math.max(1, Math.round(w * k));
-    small.height = Math.max(1, Math.round(h * k));
-    small.getContext('2d').drawImage(canvas, 0, 0, small.width, small.height);
-    const blurred = document.createElement('canvas');
-    blurred.width = w;
-    blurred.height = h;
-    const bctx = blurred.getContext('2d');
-    bctx.imageSmoothingQuality = 'high';
-    bctx.drawImage(small, 0, 0, w, h);
-    // Masque radial : transparent au centre, opaque vers les bords.
-    bctx.globalCompositeOperation = 'destination-in';
-    const rMax = Math.hypot(w, h) / 2;
-    const grad = bctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, rMax);
-    const clear = Math.max(0.1, 0.55 - blurAmt * 0.3);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(clear, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, `rgba(0,0,0,${Math.min(1, 0.4 + blurAmt * 0.6)})`);
-    bctx.fillStyle = grad;
-    bctx.fillRect(0, 0, w, h);
-    ctx.drawImage(blurred, 0, 0);
+    const px = blurAmt * w * 0.02; // jusqu'à ~2 % de la largeur
+    const tmp = document.createElement('canvas');
+    tmp.width = w;
+    tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    if (typeof tctx.filter === 'string') {
+      // Vrai flou gaussien quand le navigateur le supporte.
+      tctx.filter = `blur(${px.toFixed(1)}px)`;
+      tctx.drawImage(canvas, 0, 0);
+      ctx.drawImage(tmp, 0, 0);
+    } else {
+      // Repli : double passe réduction/agrandissement.
+      const k = 1 / (1 + blurAmt * 7);
+      const small = document.createElement('canvas');
+      small.width = Math.max(1, Math.round(w * k));
+      small.height = Math.max(1, Math.round(h * k));
+      const sctx2 = small.getContext('2d');
+      sctx2.imageSmoothingQuality = 'high';
+      sctx2.drawImage(canvas, 0, 0, small.width, small.height);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(small, 0, 0, w, h);
+    }
   }
 
   // 3 — Halation : les hautes lumières fleurissent doucement.
