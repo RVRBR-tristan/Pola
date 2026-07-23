@@ -17,6 +17,8 @@ const state = {
 
 const video = $('camera');
 const renderCanvas = $('render-canvas');
+// Rendu du polaroid seul, hors écran ; l'aperçu affiché dépend du format.
+const polaroidCanvas = document.createElement('canvas');
 
 /* ── Caméra ─────────────────────────────────────────────── */
 
@@ -106,15 +108,35 @@ async function render() {
       expo: (state.expo / 100) * 0.8,
       contrast: (state.contrast / 100) * 0.5,
     });
-    renderPolaroid(renderCanvas, state.frame, photo, state.seed);
-    positionDevOverlay();
+    renderPolaroid(polaroidCanvas, state.frame, photo);
+    updateDisplay();
   }, 0);
 }
 
-// L'overlay de développement couvre exactement l'ouverture image.
+// L'aperçu montre exactement ce qui sera téléchargé : le polaroid seul,
+// ou sa mise en page 4:5 (fond blanc ou noir) prête pour Instagram.
+function updateDisplay() {
+  const ctx = renderCanvas.getContext('2d');
+  if (state.format === 'polaroid') {
+    renderCanvas.width = polaroidCanvas.width;
+    renderCanvas.height = polaroidCanvas.height;
+    ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
+    ctx.drawImage(polaroidCanvas, 0, 0);
+  } else {
+    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', state.seed);
+    renderCanvas.width = out.width;
+    renderCanvas.height = out.height;
+    ctx.drawImage(out, 0, 0);
+  }
+  positionDevOverlay();
+}
+
+// L'overlay de développement couvre exactement l'ouverture image
+// (uniquement en vue polaroid ; en 4:5 le tirage est incliné).
 function positionDevOverlay() {
   const o = $('dev-overlay');
   const f = state.frame;
+  o.style.display = state.format === 'polaroid' ? '' : 'none';
   o.style.left = `${(f.img.x / f.W) * 100}%`;
   o.style.top = `${(f.img.y / f.H) * 100}%`;
   o.style.width = `${(f.img.w / f.W) * 100}%`;
@@ -191,8 +213,8 @@ function pickFrame(f) {
 /* ── Export ─────────────────────────────────────────────── */
 
 function exportCanvas() {
-  if (state.format === 'polaroid') return renderCanvas;
-  return renderInstagram(renderCanvas, state.format === 'ig-noir', state.seed);
+  if (state.format === 'polaroid') return polaroidCanvas;
+  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', state.seed);
 }
 
 function toBlob(canvas) {
@@ -283,6 +305,7 @@ $('format-seg').addEventListener('click', (e) => {
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-checked', String(on));
   });
+  if (state.source) updateDisplay();
 });
 
 $('btn-download').addEventListener('click', download);
