@@ -287,26 +287,98 @@ button {
 }
 .chip-row { padding: 6px 20px; }
 
-/* ── Onglets des panneaux de réglages ── */
+/* ── Tiroir contextuel + navigation basse (éditeur) ── */
 
-.tabbar {
+.drawer {
+  flex: none;
+  min-height: 96px;
   display: flex;
-  gap: 20px;
-  padding: 8px 20px 0;
+  align-items: center;
 }
-.tab {
-  font-size: 13.5px;
-  font-weight: 700;
+.drawer-pane { width: 100%; }
+.drawer-pane[hidden] { display: none; }
+
+.reglages-icons {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 12px;
+  scrollbar-width: none;
+}
+.reglages-icons::-webkit-scrollbar { display: none; }
+
+.ric {
+  flex: none;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 4px;
+  border-radius: 14px;
+  transition: background 150ms ease-out;
+}
+.ric svg { width: 23px; height: 23px; fill: var(--ink); }
+.ric span { font-size: 10.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.ric:active { background: var(--surface); }
+.ric:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.control-pane {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.ctl-body { flex: 1; min-width: 0; }
+.ctl-body .adjust-row { padding: 0; }
+.ctl-body label { width: auto; max-width: 76px; font-size: 12px; flex: none; }
+.ctl-body input[type="range"] { min-width: 0; }
+.ctl-body .adjust-val { width: 34px; }
+
+.ctl-btn {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease-out;
+}
+.ctl-btn svg { width: 20px; height: 20px; fill: var(--ink); }
+.ctl-btn:active { background: var(--surface-2); }
+.ctl-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ctl-ok { background: var(--brand); }
+.ctl-ok svg { fill: #fff; }
+.ctl-ok:active { background: var(--brand-press); }
+
+.bottombar {
+  flex: none;
+  display: flex;
+  border-top: 1px solid var(--surface-2);
+  padding: 6px 8px 2px;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 0 6px;
   color: var(--muted);
-  padding: 6px 2px 8px;
-  border-bottom: 2px solid transparent;
-  transition: color 150ms ease-out, border-color 150ms ease-out;
+  border-radius: 12px;
+  transition: color 150ms ease-out;
 }
-.tab.is-on {
-  color: var(--ink);
-  border-bottom-color: var(--brand);
-}
-.tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.nav-item svg { width: 24px; height: 24px; fill: currentColor; }
+.nav-item span { font-size: 11px; font-weight: 600; }
+.nav-item.is-on { color: var(--brand); }
+.nav-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.icon-btn-primary { background: var(--brand); }
+.icon-btn-primary svg { fill: #fff; }
+.icon-btn-primary:active { background: var(--brand-press); }
+.icon-btn-primary.is-done { background: oklch(0.62 0.14 150); }
 
 /* ── Réglages exposition / contraste ── */
 

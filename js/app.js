@@ -273,7 +273,7 @@ async function showEditor(source) {
   setAdjust('contrast', 0);
   setAdjust('blur', 0);
   resetAdjustsForPreset();
-  showTab('reglages');
+  showNav('films');
   stopCamera();
   showScreen('edit');
   render().then(develop);
@@ -297,6 +297,7 @@ function openShot(shot) {
     state.createdAt = shot.createdAt;
     state.fromGallery = true;
     applySettings(shot.settings || {});
+    showNav('films');
     stopCamera();
     showScreen('edit');
     render();
@@ -631,17 +632,65 @@ for (const key of Object.keys(ADJUST_IDS)) {
   });
 }
 
-/* ── Onglets Réglages / Fond 4:5 ── */
+/* ── Navigation basse de l'éditeur : Films / Cadres / Réglages ── */
 
-function showTab(name) {
-  for (const t of ['reglages', 'fond']) {
-    $('tab-' + t).hidden = t !== name;
-    $('tab-btn-' + t).classList.toggle('is-on', t === name);
-    $('tab-btn-' + t).setAttribute('aria-selected', String(t === name));
+const NAV_PANES = { films: 'edit-film-strip', cadres: 'frame-strip', reglages: 'drawer-reglages' };
+
+function showNav(name) {
+  for (const [nav, pane] of Object.entries(NAV_PANES)) {
+    $(pane).hidden = nav !== name;
+    $('nav-' + nav).classList.toggle('is-on', nav === name);
   }
+  $('drawer-control').hidden = true;
 }
-$('tab-btn-reglages').addEventListener('click', () => showTab('reglages'));
-$('tab-btn-fond').addEventListener('click', () => showTab('fond'));
+for (const nav of Object.keys(NAV_PANES)) {
+  $('nav-' + nav).addEventListener('click', () => showNav(nav));
+}
+
+/* ── Sous-menu Réglages : une icône par réglage, curseur seul ── */
+
+const CONTROL_ROWS = {
+  expo: 'row-expo', contrast: 'row-contrast', sat: 'row-sat',
+  grain: 'row-grain', blur: 'row-blur', fond: 'row-fond',
+};
+let ctlKey = null;
+let ctlPrev = null;
+
+function openControl(key) {
+  ctlKey = key;
+  ctlPrev = key === 'fond'
+    ? { format: state.format, igDark: state.igDark, igSize: state.igSize }
+    : state[key];
+  for (const [k, row] of Object.entries(CONTROL_ROWS)) $(row).hidden = k !== key;
+  $('drawer-reglages').hidden = true;
+  $('drawer-control').hidden = false;
+}
+
+function closeControl(apply) {
+  if (!apply && ctlKey) {
+    if (ctlKey === 'fond') {
+      state.igDark = ctlPrev.igDark;
+      state.igSize = ctlPrev.igSize;
+      state.format = ctlPrev.format;
+      $('adj-size').value = state.igSize;
+      $('adj-size-val').textContent = String(state.igSize);
+      syncIgControls();
+      if (state.source) updateDisplay();
+    } else {
+      setAdjust(ctlKey, ctlPrev);
+    }
+  }
+  ctlKey = null;
+  render();
+  $('drawer-control').hidden = true;
+  $('drawer-reglages').hidden = false;
+}
+
+document.querySelectorAll('#drawer-reglages .ric').forEach((b) => {
+  b.addEventListener('click', () => openControl(b.dataset.key));
+});
+$('ctl-ok').addEventListener('click', () => closeControl(true));
+$('ctl-cancel').addEventListener('click', () => closeControl(false));
 
 /* ── Réglages du canevas 4:5 (taille, ombre) ── */
 

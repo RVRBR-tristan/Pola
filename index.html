@@ -66,9 +66,12 @@
     <header class="topbar">
       <button class="back" id="btn-back">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 8 11.5l6.5 6.5 1.4-1.4-5.1-5.1 5.1-5.1L14.5 5Z"/></svg>
-        Nouvelle photo
+        Retour
       </button>
       <span class="topbar-film" id="edit-film-label">600</span>
+      <button class="icon-btn icon-btn-primary" id="btn-download" aria-label="Télécharger">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2 7.6 10.8 9 9.4l2 2V3h2v8.4l2-2 1.4 1.4-4.4 4.4ZM5 19v2h14v-2H5Z"/></svg>
+      </button>
     </header>
 
     <div class="stage stage-edit">
@@ -78,68 +81,105 @@
       </div>
     </div>
 
-    <div class="panel">
-      <div class="chip-row" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>
-      <div class="chip-row" id="frame-strip" role="radiogroup" aria-label="Cadre"></div>
+    <div class="drawer">
+      <div class="chip-row drawer-pane" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>
+      <div class="chip-row drawer-pane" id="frame-strip" role="radiogroup" aria-label="Cadre" hidden></div>
 
-      <div class="tabbar" role="tablist" aria-label="Panneaux de réglages">
-        <button class="tab is-on" id="tab-btn-reglages" role="tab" aria-selected="true">Réglages</button>
-        <button class="tab" id="tab-btn-fond" role="tab" aria-selected="false">Fond 4:5</button>
+      <div class="drawer-pane reglages-icons" id="drawer-reglages" hidden>
+        <button class="ric" data-key="expo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2Zm0 18L4 4h16v16ZM10 5H5v2h5V5Zm5 12v2h2v-2h2v-2h-2v-2h-2v2h-2v2h2Z"/></svg>
+          <span>Exposition</span>
+        </button>
+        <button class="ric" data-key="contrast">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18V4c4.41 0 8 3.59 8 8s-3.59 8-8 8Z"/></svg>
+          <span>Contraste</span>
+        </button>
+        <button class="ric" data-key="sat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.69 6.34 8.35a8 8 0 1 0 11.31 0L12 2.69ZM12 20a6 6 0 0 1-6-6c0-1.6.62-3.11 1.76-4.24L12 5.52l4.24 4.24A5.94 5.94 0 0 1 18 14a6 6 0 0 1-6 6Z"/></svg>
+          <span>Saturation</span>
+        </button>
+        <button class="ric" data-key="grain">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM9.5 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM6 12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm-10.5 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0ZM6 19a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm7 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg>
+          <span>Grain</span>
+        </button>
+        <button class="ric" data-key="blur">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4ZM12 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm0 18a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM4 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm16 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM6.3 5.3a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm11.4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-11.4 11.4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm11.4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg>
+          <span>Flou radial</span>
+        </button>
+        <button class="ric" data-key="fond">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12h-2v3h-3v2h5v-5ZM7 9h3V7H5v5h2V9Zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16.01H3V4.99h18v14.02Z"/></svg>
+          <span>Fond 4:5</span>
+        </button>
       </div>
 
-      <div class="adjust-rows" id="tab-reglages">
-        <div class="adjust-row">
-          <label for="adj-expo">Exposition</label>
-          <input type="range" id="adj-expo" min="-100" max="100" value="0" step="1">
-          <button class="adjust-val" id="adj-expo-val" title="Réinitialiser">0</button>
-        </div>
-        <div class="adjust-row">
-          <label for="adj-contrast">Contraste</label>
-          <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
-          <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
-        </div>
-        <div class="adjust-row">
-          <label for="adj-sat">Saturation</label>
-          <input type="range" id="adj-sat" min="0" max="160" value="82" step="1">
-          <button class="adjust-val" id="adj-sat-val" title="Réinitialiser">82</button>
-        </div>
-        <div class="adjust-row">
-          <label for="adj-grain">Grain</label>
-          <input type="range" id="adj-grain" min="0" max="100" value="18" step="1">
-          <button class="adjust-val" id="adj-grain-val" title="Réinitialiser">18</button>
-        </div>
-        <div class="adjust-row">
-          <label for="adj-blur">Flou radial</label>
-          <input type="range" id="adj-blur" min="0" max="100" value="0" step="1">
-          <button class="adjust-val" id="adj-blur-val" title="Réinitialiser">0</button>
-        </div>
-      </div>
-
-      <div class="adjust-rows" id="tab-fond" hidden>
-        <div class="adjust-row adjust-row-toggle">
-          <label for="toggle-ig">Fond 4:5</label>
-          <div class="ig-controls">
-            <input type="checkbox" id="toggle-ig" class="switch">
-            <div class="swatches" id="bg-swatches" hidden role="radiogroup" aria-label="Couleur du fond">
-              <button class="swatch swatch-blanc is-on" id="sw-blanc" role="radio" aria-checked="true" aria-label="Fond blanc"></button>
-              <button class="swatch swatch-noir" id="sw-noir" role="radio" aria-checked="false" aria-label="Fond noir"></button>
+      <div class="drawer-pane control-pane" id="drawer-control" hidden>
+        <button class="ctl-btn" id="ctl-cancel" aria-label="Annuler">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+        <div class="ctl-body">
+          <div class="adjust-row" id="row-expo" hidden>
+            <label for="adj-expo">Exposition</label>
+            <input type="range" id="adj-expo" min="-100" max="100" value="0" step="1">
+            <button class="adjust-val" id="adj-expo-val" title="Réinitialiser">0</button>
+          </div>
+          <div class="adjust-row" id="row-contrast" hidden>
+            <label for="adj-contrast">Contraste</label>
+            <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
+            <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
+          </div>
+          <div class="adjust-row" id="row-sat" hidden>
+            <label for="adj-sat">Saturation</label>
+            <input type="range" id="adj-sat" min="0" max="160" value="82" step="1">
+            <button class="adjust-val" id="adj-sat-val" title="Réinitialiser">82</button>
+          </div>
+          <div class="adjust-row" id="row-grain" hidden>
+            <label for="adj-grain">Grain</label>
+            <input type="range" id="adj-grain" min="0" max="100" value="18" step="1">
+            <button class="adjust-val" id="adj-grain-val" title="Réinitialiser">18</button>
+          </div>
+          <div class="adjust-row" id="row-blur" hidden>
+            <label for="adj-blur">Flou radial</label>
+            <input type="range" id="adj-blur" min="0" max="100" value="0" step="1">
+            <button class="adjust-val" id="adj-blur-val" title="Réinitialiser">0</button>
+          </div>
+          <div id="row-fond" hidden>
+            <div class="adjust-row adjust-row-toggle">
+              <label for="toggle-ig">Fond 4:5</label>
+              <div class="ig-controls">
+                <input type="checkbox" id="toggle-ig" class="switch">
+                <div class="swatches" id="bg-swatches" hidden role="radiogroup" aria-label="Couleur du fond">
+                  <button class="swatch swatch-blanc is-on" id="sw-blanc" role="radio" aria-checked="true" aria-label="Fond blanc"></button>
+                  <button class="swatch swatch-noir" id="sw-noir" role="radio" aria-checked="false" aria-label="Fond noir"></button>
+                </div>
+              </div>
+            </div>
+            <div class="adjust-row" id="size-row" hidden>
+              <label for="adj-size">Taille</label>
+              <input type="range" id="adj-size" min="40" max="100" value="80" step="1">
+              <button class="adjust-val" id="adj-size-val" title="Réinitialiser">80</button>
             </div>
           </div>
         </div>
-        <div class="adjust-row" id="size-row" hidden>
-          <label for="adj-size">Taille</label>
-          <input type="range" id="adj-size" min="40" max="100" value="80" step="1">
-          <button class="adjust-val" id="adj-size-val" title="Réinitialiser">80</button>
-        </div>
-      </div>
-
-      <div class="export-row">
-        <button class="btn btn-primary" id="btn-download">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2 7.6 10.8 9 9.4l2 2V3h2v8.4l2-2 1.4 1.4-4.4 4.4ZM5 19v2h14v-2H5Z"/></svg>
-          Télécharger
+        <button class="ctl-btn ctl-ok" id="ctl-ok" aria-label="Valider">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>
         </button>
       </div>
     </div>
+
+    <nav class="bottombar" aria-label="Menus de l'éditeur">
+      <button class="nav-item is-on" id="nav-films">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2ZM8 17H6v-2h2v2Zm0-4H6v-2h2v2Zm0-4H6V7h2v2Zm10 8h-2v-2h2v2Zm0-4h-2v-2h2v2Zm0-4h-2V7h2v2Z"/></svg>
+        <span>Films</span>
+      </button>
+      <button class="nav-item" id="nav-cadres">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4h-4l-4-4-4 4H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H4V6h4.52l3.52-3.5L15.52 6H20v14ZM18 8H6v10h12V8Z"/></svg>
+        <span>Cadres</span>
+      </button>
+      <button class="nav-item" id="nav-reglages">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17v2h6v-2H3ZM3 5v2h10V5H3Zm10 16v-2h8v-2h-8v-2h-2v6h2ZM7 9v2H3v2h4v2h2V9H7Zm14 4v-2H11v2h10Zm-6-4h2V7h4V5h-4V3h-2v6Z"/></svg>
+        <span>Réglages</span>
+      </button>
+    </nav>
   </section>
 
   <!-- ── Galerie ────────────────────────────────────────── -->
