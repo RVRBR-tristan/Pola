@@ -23,6 +23,9 @@
       <img class="wordmark" src="assets/pola-logo.svg" alt="Pola">
       <span class="topbar-right">
         <span class="topbar-film" id="film-label">600</span>
+        <button class="icon-btn" id="btn-flash" aria-label="Flash" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.8 22l8.7-11.5H12L13 2Z"/></svg>
+        </button>
         <button class="icon-btn" id="btn-gallery" aria-label="Galerie">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z"/></svg>
         </button>
@@ -79,7 +82,12 @@
       <div class="chip-row" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>
       <div class="chip-row" id="frame-strip" role="radiogroup" aria-label="Cadre"></div>
 
-      <div class="adjust-rows">
+      <div class="tabbar" role="tablist" aria-label="Panneaux de réglages">
+        <button class="tab is-on" id="tab-btn-reglages" role="tab" aria-selected="true">Réglages</button>
+        <button class="tab" id="tab-btn-fond" role="tab" aria-selected="false">Fond 4:5</button>
+      </div>
+
+      <div class="adjust-rows" id="tab-reglages">
         <div class="adjust-row">
           <label for="adj-expo">Exposition</label>
           <input type="range" id="adj-expo" min="-100" max="100" value="0" step="1">
@@ -90,6 +98,24 @@
           <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
           <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
         </div>
+        <div class="adjust-row">
+          <label for="adj-sat">Saturation</label>
+          <input type="range" id="adj-sat" min="0" max="160" value="82" step="1">
+          <button class="adjust-val" id="adj-sat-val" title="Réinitialiser">82</button>
+        </div>
+        <div class="adjust-row">
+          <label for="adj-grain">Grain</label>
+          <input type="range" id="adj-grain" min="0" max="100" value="18" step="1">
+          <button class="adjust-val" id="adj-grain-val" title="Réinitialiser">18</button>
+        </div>
+        <div class="adjust-row">
+          <label for="adj-blur">Flou radial</label>
+          <input type="range" id="adj-blur" min="0" max="100" value="0" step="1">
+          <button class="adjust-val" id="adj-blur-val" title="Réinitialiser">0</button>
+        </div>
+      </div>
+
+      <div class="adjust-rows" id="tab-fond" hidden>
         <div class="adjust-row adjust-row-toggle">
           <label for="toggle-ig">Fond 4:5</label>
           <div class="ig-controls">

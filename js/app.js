@@ -12,13 +12,17 @@ const state = {
   fromGallery: false,    // le retour de l'éditeur mène-t-il à la galerie ?
   preset: PRESETS[0],
   frame: FRAMES[0],
-  expo: 0,       // -100..100 → ± 0,8 EV
-  contrast: 0,   // -100..100 → ± 0,5
+  expo: 0,       // -100..100 → ± 1,2 EV
+  contrast: 0,   // -100..100 → ± 0,75
+  sat: 82,       // 0..160 → saturation absolue (init. sur le film)
+  grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
+  blur: 0,       // 0..100 → flou radial
   igSize: 80,    // taille du polaroid dans le canevas 4:5 (40..100)
   igDark: false, // pastille : fond blanc ou noir
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
+  flash: false,
   stream: null,
 };
 
@@ -83,9 +87,10 @@ function sourceFromImage(imgEl) {
 /* ── Pipeline de rendu ──────────────────────────────────── */
 
 // Recadrage centré de la source au ratio de l'ouverture du cadre.
-function cropToOpening(source, frame) {
+// `sf` < 1 : version réduite pour l'aperçu rapide pendant un glissement.
+function cropToOpening(source, frame, sf = 1) {
   const { w, h } = frame.img;
-  const outW = w * frame.scale, outH = h * frame.scale;
+  const outW = Math.round(w * frame.scale * sf), outH = Math.round(h * frame.scale * sf);
   const ratio = outW / outH;
   let sw = source.width, sh = source.height;
   if (sw / sh > ratio) sw = sh * ratio;
@@ -101,23 +106,37 @@ function cropToOpening(source, frame) {
   return c;
 }
 
+function currentAdjust() {
+  return {
+    expo: (state.expo / 100) * 1.2,
+    contrast: (state.contrast / 100) * 0.75,
+    sat: state.sat / 100,
+    grain: state.grain / 250,
+    blur: state.blur / 100,
+  };
+}
+
+// Rendu : `fast` = aperçu réduit pendant un glissement de curseur ;
+// un rendu plein res demandé pendant la file l'emporte toujours.
 let renderQueued = false;
-async function render() {
-  if (!state.source || renderQueued) return;
+let wantFull = false;
+async function render(fast = false) {
+  if (!state.source) return;
+  if (!fast) wantFull = true;
+  if (renderQueued) return;
   renderQueued = true;
   await assetsReady;
   // setTimeout plutôt que requestAnimationFrame : rAF est suspendu
   // quand l'onglet est en arrière-plan et le rendu ne se ferait jamais.
   setTimeout(() => {
     renderQueued = false;
-    const photo = cropToOpening(state.source, state.frame);
-    applyPreset(photo, state.preset, state.seed, {
-      expo: (state.expo / 100) * 0.8,
-      contrast: (state.contrast / 100) * 0.5,
-    });
+    const full = wantFull;
+    wantFull = false;
+    const photo = cropToOpening(state.source, state.frame, full ? 1 : 0.35);
+    applyPreset(photo, state.preset, state.seed, currentAdjust());
     renderPolaroid(polaroidCanvas, state.frame, photo);
     updateDisplay();
-    schedulePersist();
+    if (full) schedulePersist();
   }, 0);
 }
 
@@ -136,6 +155,10 @@ function updateDisplay() {
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
   }
+  $('polaroid-out').style.setProperty(
+    '--out-ratio',
+    (renderCanvas.width / renderCanvas.height).toFixed(4)
+  );
   positionDevOverlay();
 }
 
@@ -183,6 +206,9 @@ async function persistCurrent() {
       frameId: state.frame.id,
       expo: state.expo,
       contrast: state.contrast,
+      sat: state.sat,
+      grain: state.grain,
+      blur: state.blur,
       igSize: state.igSize,
       format: state.format,
       seed: state.seed,
@@ -215,6 +241,9 @@ function applySettings(s) {
   updateLiveFrame();
   setAdjust('expo', s.expo || 0);
   setAdjust('contrast', s.contrast || 0);
+  setAdjust('sat', s.sat ?? adjustDefault('sat'));
+  setAdjust('grain', s.grain ?? adjustDefault('grain'));
+  setAdjust('blur', s.blur || 0);
   state.igSize = s.igSize ?? 80;
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
@@ -242,6 +271,9 @@ async function showEditor(source) {
   state.fromGallery = false;
   setAdjust('expo', 0);
   setAdjust('contrast', 0);
+  setAdjust('blur', 0);
+  resetAdjustsForPreset();
+  showTab('reglages');
   stopCamera();
   showScreen('edit');
   render().then(develop);
@@ -307,6 +339,7 @@ function pickPreset(p) {
   syncPresetUi();
   buildChips($('film-strip'), PRESETS, p, pickPreset);
   buildChips($('edit-film-strip'), PRESETS, p, pickPreset);
+  resetAdjustsForPreset();
   render();
 }
 
@@ -363,10 +396,50 @@ async function download() {
 
 /* ── Écouteurs ──────────────────────────────────────────── */
 
-$('btn-shutter').addEventListener('click', () => {
-  const source = captureFromVideo();
-  if (!source) return;
+// Torche matérielle (Android) ; sinon repli : flash d'écran.
+async function setTorch(on) {
+  const track = state.stream?.getVideoTracks()[0];
+  if (!track || !track.getCapabilities) return false;
+  try {
+    if (!track.getCapabilities().torch) return false;
+    await track.applyConstraints({ advanced: [{ torch: on }] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+$('btn-flash').addEventListener('click', () => {
+  state.flash = !state.flash;
+  $('btn-flash').classList.toggle('is-on', state.flash);
+  $('btn-flash').setAttribute('aria-pressed', String(state.flash));
+});
+
+let capturing = false;
+$('btn-shutter').addEventListener('click', async () => {
+  if (capturing) return;
+  capturing = true;
   const flash = $('flash');
+  let source;
+  if (state.flash) {
+    const torchOk = await setTorch(true);
+    if (!torchOk) {
+      // Flash d'écran : plein blanc pendant la capture (selfies).
+      flash.style.transition = 'none';
+      flash.style.opacity = '1';
+    }
+    await new Promise((r) => setTimeout(r, torchOk ? 320 : 240));
+    source = captureFromVideo();
+    if (torchOk) setTorch(false);
+    else {
+      flash.style.opacity = '';
+      flash.style.transition = '';
+    }
+  } else {
+    source = captureFromVideo();
+  }
+  capturing = false;
+  if (!source) return;
   flash.classList.remove('is-firing');
   void flash.offsetWidth;
   flash.classList.add('is-firing');
@@ -520,28 +593,55 @@ $('btn-delete').addEventListener('click', async () => {
   await refreshGallery();
 });
 
-/* ── Réglages exposition / contraste ── */
+/* ── Curseurs de réglage ── */
 
-const ADJUST_IDS = { expo: 'adj-expo', contrast: 'adj-contrast' };
-let adjustTimer;
+const ADJUST_IDS = { expo: 'adj-expo', contrast: 'adj-contrast', sat: 'adj-sat', grain: 'adj-grain', blur: 'adj-blur' };
+const SIGNED = new Set(['expo', 'contrast']);
 
 function setAdjust(key, value) {
   state[key] = value;
   $(ADJUST_IDS[key]).value = value;
-  $(ADJUST_IDS[key] + '-val').textContent = value > 0 ? `+${value}` : String(value);
+  $(ADJUST_IDS[key] + '-val').textContent =
+    SIGNED.has(key) && value > 0 ? `+${value}` : String(value);
+}
+
+// Valeur de repos : saturation et grain reprennent celles du film choisi.
+function adjustDefault(key) {
+  if (key === 'sat') return Math.round(state.preset.sat * 100);
+  if (key === 'grain') return Math.round(state.preset.grain * 250);
+  return 0;
+}
+
+function resetAdjustsForPreset() {
+  setAdjust('sat', adjustDefault('sat'));
+  setAdjust('grain', adjustDefault('grain'));
 }
 
 for (const key of Object.keys(ADJUST_IDS)) {
+  // Pendant le glissement : aperçu rapide basse résolution, fluide.
   $(ADJUST_IDS[key]).addEventListener('input', (e) => {
     setAdjust(key, Number(e.target.value));
-    clearTimeout(adjustTimer);
-    adjustTimer = setTimeout(render, 120);
+    render(true);
   });
+  // Au relâchement : rendu pleine résolution.
+  $(ADJUST_IDS[key]).addEventListener('change', () => render());
   $(ADJUST_IDS[key] + '-val').addEventListener('click', () => {
-    setAdjust(key, 0);
+    setAdjust(key, adjustDefault(key));
     render();
   });
 }
+
+/* ── Onglets Réglages / Fond 4:5 ── */
+
+function showTab(name) {
+  for (const t of ['reglages', 'fond']) {
+    $('tab-' + t).hidden = t !== name;
+    $('tab-btn-' + t).classList.toggle('is-on', t === name);
+    $('tab-btn-' + t).setAttribute('aria-selected', String(t === name));
+  }
+}
+$('tab-btn-reglages').addEventListener('click', () => showTab('reglages'));
+$('tab-btn-fond').addEventListener('click', () => showTab('fond'));
 
 /* ── Réglages du canevas 4:5 (taille, ombre) ── */
 

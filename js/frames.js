@@ -68,6 +68,33 @@ export const FRAMES = [
     overlay: 'assets/frame-rouge.png',
     paper: '#c8453a',
   },
+  {
+    id: 'film120',
+    name: 'Film 120',
+    W: 1062, H: 974,
+    img: { x: 108, y: 76, w: 842, h: 780 },
+    scale: 2,
+    overlay: 'assets/frame-120.png',
+    paper: '#141414',
+  },
+  {
+    id: 'kodak',
+    name: 'Kodak',
+    W: 1430, H: 1029,
+    img: { x: 60, y: 40, w: 1322, h: 941 },
+    scale: 1.5,
+    overlay: 'assets/frame-kodak.png',
+    paper: '#0d0d0d',
+  },
+  {
+    id: 'negatif',
+    name: 'Négatif',
+    W: 836, H: 1161,
+    img: { x: 24, y: 64, w: 772, h: 1030 },
+    scale: 2,
+    overlay: 'assets/frame-negatif.png',
+    paper: '#101010',
+  },
 ];
 
 /* ── Chargement des scans ── */

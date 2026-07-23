@@ -1,4 +1,4 @@
-const CACHE = 'pola-v5';
+const CACHE = 'pola-v6';
 const SHELL = [
   './',
   'index.html',
@@ -16,6 +16,9 @@ const SHELL = [
   'assets/frame-perfore.png',
   'assets/frame-wide.png',
   'assets/frame-rouge.png',
+  'assets/frame-120.png',
+  'assets/frame-kodak.png',
+  'assets/frame-negatif.png',
   'icons/manifest-icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',

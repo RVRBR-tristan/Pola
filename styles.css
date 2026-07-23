@@ -91,6 +91,8 @@ button {
 .icon-btn svg { width: 19px; height: 19px; fill: var(--ink); }
 .icon-btn:active { background: var(--surface-2); }
 .icon-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.icon-btn.is-on { background: var(--brand); }
+.icon-btn.is-on svg { fill: #fff; }
 
 .back {
   display: inline-flex;
@@ -244,17 +246,16 @@ button {
 
 .polaroid-out {
   position: relative;
-  height: 100%;
-  max-width: 100%;
-  display: flex;
-  justify-content: center;
+  /* comme le viseur : jamais plus large que la scène ni plus haut
+     qu'elle — --out-ratio (L/H de l'aperçu) est posé par app.js.
+     Un seul axe contraint à la fois : aucune déformation possible. */
+  width: min(100%, calc(100cqh * var(--out-ratio, 0.82)));
   filter: drop-shadow(0 22px 45px rgba(30, 20, 5, 0.3));
 }
 #render-canvas {
-  height: 100%;
-  width: auto;
-  max-width: 100%;
   display: block;
+  width: 100%;
+  height: auto;
 }
 
 /* Développement : la fenêtre image émerge de la chimie */
@@ -286,6 +287,27 @@ button {
 }
 .chip-row { padding: 6px 20px; }
 
+/* ── Onglets des panneaux de réglages ── */
+
+.tabbar {
+  display: flex;
+  gap: 20px;
+  padding: 8px 20px 0;
+}
+.tab {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 6px 2px 8px;
+  border-bottom: 2px solid transparent;
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+.tab.is-on {
+  color: var(--ink);
+  border-bottom-color: var(--brand);
+}
+.tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 /* ── Réglages exposition / contraste ── */
 
 .adjust-rows {
@@ -301,6 +323,7 @@ button {
   min-height: 36px;
 }
 .adjust-row[hidden] { display: none; }
+.adjust-rows[hidden] { display: none; }
 .adjust-row label {
   flex: none;
   width: 84px;
