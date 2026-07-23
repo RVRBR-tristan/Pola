@@ -11,9 +11,10 @@ export const FRAMES = [
   {
     id: 'p600',
     name: '600 Blanc',
-    W: 880, H: 1070,
-    img: { x: 45, y: 50, w: 790, h: 790 },
+    W: 656, H: 792,
+    img: { x: 47, y: 49, w: 568, h: 580 },
     scale: 2,
+    overlay: 'assets/frame-600.png',
     paper: [248, 246, 241],
     aged: 0, dark: false,
   },
@@ -38,11 +39,21 @@ export const FRAMES = [
   {
     id: 'instax',
     name: 'Instax Mini',
-    W: 604, H: 950,
-    img: { x: 45, y: 87, w: 513, h: 687 },
+    W: 606, H: 957,
+    img: { x: 46, y: 91, w: 510, h: 684 },
     scale: 2,
+    overlay: 'assets/frame-instax.png',
     paper: [250, 249, 247],
-    texture: 'assets/instax-frame.jpg',
+    aged: 0, dark: false,
+  },
+  {
+    id: 'instax-brut',
+    name: 'Instax Brut',
+    W: 591, H: 891,
+    img: { x: 34, y: 78, w: 523, h: 648 },
+    scale: 2,
+    overlay: 'assets/frame-instax-brut.png',
+    paper: [250, 249, 247],
     aged: 0, dark: false,
   },
 ];
@@ -51,13 +62,13 @@ export const FRAMES = [
 
 const textures = {};
 export const assetsReady = Promise.all(
-  FRAMES.filter((f) => f.texture).map(
+  FRAMES.filter((f) => f.overlay).map(
     (f) =>
       new Promise((res) => {
         const img = new Image();
         img.onload = () => { textures[f.id] = img; res(); };
         img.onerror = res; // repli : synthèse procédurale
-        img.src = f.texture;
+        img.src = f.overlay;
       })
   )
 );
@@ -98,11 +109,7 @@ function synthPaper(frame, seed) {
   c.height = H;
   const ctx = c.getContext('2d');
 
-  if (textures[frame.id]) {
-    // Texture réelle scannée.
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(textures[frame.id], 0, 0, W, H);
-  } else {
+  {
     // — Fibre du papier, calculée à mi-résolution puis lissée.
     const hw = W >> 1, hh = H >> 1;
     const half = document.createElement('canvas');
@@ -270,25 +277,23 @@ export function renderPolaroid(target, frame, photo, seed) {
   target.height = H;
   const ctx = target.getContext('2d');
 
-  ctx.drawImage(synthPaper(frame, seed), 0, 0);
-
   const ix = frame.img.x * s, iy = frame.img.y * s;
   const iw = frame.img.w * s, ih = frame.img.h * s;
 
   if (textures[frame.id]) {
-    // Texture réelle : la photo se glisse sous la fenêtre en multiply,
-    // les ombres du scan retombent naturellement sur l'image.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(ix, iy, iw, ih);
-    ctx.clip();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.drawImage(photo, ix, iy, iw, ih);
-    ctx.restore();
-  } else {
-    ctx.drawImage(photo, ix, iy, iw, ih);
+    // Cadre réel scanné à fenêtre transparente : la photo est glissée
+    // dessous (légèrement débordante pour passer sous les bords doux
+    // de la découpe), puis le scan — alpha, ombres, grain — par-dessus.
+    ctx.clearRect(0, 0, W, H);
+    const pad = 5 * s;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(photo, ix - pad, iy - pad, iw + pad * 2, ih + pad * 2);
+    ctx.drawImage(textures[frame.id], 0, 0, W, H);
+    return target;
   }
-  ctx.globalCompositeOperation = 'source-over';
+
+  ctx.drawImage(synthPaper(frame, seed), 0, 0);
+  ctx.drawImage(photo, ix, iy, iw, ih);
 
   // — Embossage de la découpe : le papier surplombe le film.
   // Ombre portée du bord supérieur/gauche sur la photo…

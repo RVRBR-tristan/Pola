@@ -95,13 +95,15 @@ async function render() {
   if (!state.source || renderQueued) return;
   renderQueued = true;
   await assetsReady;
-  requestAnimationFrame(() => {
+  // setTimeout plutôt que requestAnimationFrame : rAF est suspendu
+  // quand l'onglet est en arrière-plan et le rendu ne se ferait jamais.
+  setTimeout(() => {
     renderQueued = false;
     const photo = cropToOpening(state.source, state.frame);
     applyPreset(photo, state.preset, state.seed);
     renderPolaroid(renderCanvas, state.frame, photo, state.seed);
     positionDevOverlay();
-  });
+  }, 0);
 }
 
 // L'overlay de développement couvre exactement l'ouverture image.

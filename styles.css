@@ -215,18 +215,17 @@ button {
 
 .polaroid-out {
   position: relative;
+  height: 100%;
   max-width: 100%;
-  max-height: 100%;
   display: flex;
+  justify-content: center;
   filter: drop-shadow(0 22px 45px rgba(30, 20, 5, 0.3));
 }
 #render-canvas {
-  max-width: 100%;
-  max-height: 100%;
+  height: 100%;
   width: auto;
-  height: auto;
-  object-fit: contain;
-  border-radius: 3px;
+  max-width: 100%;
+  display: block;
 }
 
 /* Développement : la fenêtre image émerge de la chimie */
