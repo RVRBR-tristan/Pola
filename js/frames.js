@@ -34,6 +34,42 @@ export const FRAMES = [
     overlay: 'assets/frame-instax-brut.png',
     paper: '#faf9f7',
   },
+  {
+    id: 'creme',
+    name: 'Crème',
+    W: 552, H: 676,
+    img: { x: 36, y: 39, w: 482, h: 505 },
+    scale: 2,
+    overlay: 'assets/frame-creme.png',
+    paper: '#f2f0e4',
+  },
+  {
+    id: 'perfore',
+    name: 'Perforé',
+    W: 611, H: 720,
+    img: { x: 44, y: 76, w: 525, h: 509 },
+    scale: 2,
+    overlay: 'assets/frame-perfore.png',
+    paper: '#eae6df',
+  },
+  {
+    id: 'wide',
+    name: 'Instax Wide',
+    W: 905, H: 711,
+    img: { x: 38, y: 66, w: 825, h: 513 },
+    scale: 2,
+    overlay: 'assets/frame-wide.png',
+    paper: '#f8f8f8',
+  },
+  {
+    id: 'rouge',
+    name: 'Rouge',
+    W: 742, H: 702,
+    img: { x: 52, y: 56, w: 634, h: 453 },
+    scale: 2,
+    overlay: 'assets/frame-rouge.png',
+    paper: '#c8453a',
+  },
 ];
 
 /* ── Chargement des scans ── */
