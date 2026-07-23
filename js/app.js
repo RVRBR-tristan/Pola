@@ -218,6 +218,7 @@ function pickFrame(f) {
 function updateLiveFrame() {
   const f = state.frame;
   $('live-frame').src = f.overlay;
+  $('polaroid-live').style.setProperty('--frame-ratio', (f.W / f.H).toFixed(4));
   const w = $('live-window');
   w.style.left = `${(f.img.x / f.W) * 100}%`;
   w.style.top = `${(f.img.y / f.H) * 100}%`;

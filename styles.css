@@ -95,6 +95,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 10px 24px;
+  container-type: size;
 }
 
 /* Polaroid live : le viseur est déjà dans le vrai scan du cadre.
@@ -102,7 +103,9 @@ button {
    comme au rendu ; la géométrie est posée en % par app.js. */
 .polaroid-live {
   position: relative;
-  width: min(100%, 46vh);
+  /* jamais plus large que la scène, ni plus haut qu'elle :
+     --frame-ratio (L/H du cadre) est posé par app.js */
+  width: min(100%, 50vh, calc(100cqh * var(--frame-ratio, 0.82)));
   filter: drop-shadow(0 20px 45px rgba(30, 20, 5, 0.3));
 }
 .polaroid-live-frame {
