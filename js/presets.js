@@ -1,97 +1,141 @@
 // ── Films instantanés : chaque preset simule une émulsion précise ──
-// Le pipeline pixel utilise lift / gamma / gain par canal, une courbe de
-// contraste filmique, saturation, halation (bloom), grain et vignettage.
-// `css` est l'approximation temps réel pour le viseur et les vignettes.
+//
+// Modèle établi d'après les caractéristiques documentées des vrais films
+// (analog.cafe, Blue Moon Camera, moominsean, PictureFX) :
+//  · `lift`  — voile coloré des noirs (les noirs d'un polaroid ne sont
+//    jamais neutres ni à zéro) ;
+//  · `white` — plafond des blancs par canal : les hautes lumières sont
+//    crème/ivoire, jamais du blanc pur ;
+//  · `gamma` — dérives des tons moyens par canal ;
+//  · `contrast` — courbe en S filmique (épaules douces) ;
+//  · `splitShadow` / `splitHigh` — croisement colorimétrique par zone
+//    tonale (ex. 600 : ombres vertes, hautes lumières rosées) ;
+//  · `olive` — mixeur de canaux : les verts glissent vers l'olive (SX-70) ;
+//  · `blueMute` — les bleus perdent leur éclat (faiblesse cyan des
+//    émulsions intégrales) ;
+//  · halation (`bloom`), grain d'émulsion, vignettage.
+// `css` est l'approximation temps réel pour le viseur.
 
 export const PRESETS = [
   {
+    // Polaroid 600 : chaud, pastel ; hautes lumières crème rosé,
+    // ombres vertes et bouchées, saturation douce et régulière.
     id: '600',
     name: '600',
-    css: 'contrast(0.93) saturate(0.88) brightness(1.03) sepia(0.12)',
-    lift: 0.055,
-    gamma: { r: 1.05, g: 1.0, b: 0.96 },
-    gain: { r: 1.0, g: 0.985, b: 0.945 },
-    sat: 0.86,
-    contrast: 0.16,
-    bloom: 0.12,
+    css: 'sepia(0.14) saturate(0.85) contrast(0.96) brightness(1.02)',
+    lift: { r: 0.035, g: 0.048, b: 0.042 },
+    white: { r: 0.97, g: 0.945, b: 0.9 },
+    gamma: { r: 1.06, g: 1.0, b: 0.94 },
+    contrast: 0.18,
+    sat: 0.82,
+    splitShadow: [-6, 5, 3],
+    splitHigh: [9, 3, -6],
+    blueMute: 0.15,
+    bloom: 0.14,
     grain: 0.07,
+    vignette: 0.22,
+  },
+  {
+    // SX-70 : doré, doux ; noirs jamais bouchés, blancs jamais stériles,
+    // verts olive, rouges assourdis, ombres bleutées, rehauts rosés.
+    id: 'sx70',
+    name: 'SX-70',
+    css: 'sepia(0.28) saturate(0.78) contrast(0.88) brightness(1.04)',
+    lift: { r: 0.07, g: 0.065, b: 0.08 },
+    white: { r: 0.96, g: 0.93, b: 0.875 },
+    gamma: { r: 1.1, g: 1.02, b: 0.92 },
+    contrast: 0.06,
+    sat: 0.76,
+    splitShadow: [0, 2, 7],
+    splitHigh: [10, 4, -4],
+    olive: 0.14,
+    blueMute: 0.2,
+    bloom: 0.18,
+    grain: 0.09,
     vignette: 0.26,
   },
   {
-    id: 'sx70',
-    name: 'SX-70',
-    css: 'sepia(0.24) saturate(0.9) contrast(0.9) brightness(1.02)',
-    lift: 0.07,
-    gamma: { r: 1.09, g: 1.0, b: 0.93 },
-    gain: { r: 1.04, g: 0.97, b: 0.89 },
-    sat: 0.8,
-    contrast: 0.09,
-    bloom: 0.18,
-    grain: 0.09,
-    vignette: 0.3,
-  },
-  {
+    // Time Zero : plus saturé que le SX-70, dominante teal / vert acier,
+    // bleus mats, rendu pictural.
     id: 'timezero',
     name: 'Time Zero',
-    css: 'sepia(0.12) hue-rotate(14deg) saturate(0.74) contrast(0.9)',
-    lift: 0.09,
-    gamma: { r: 1.0, g: 0.97, b: 1.0 },
-    gain: { r: 0.93, g: 1.0, b: 0.99 },
-    sat: 0.7,
-    contrast: 0.06,
-    bloom: 0.1,
+    css: 'hue-rotate(10deg) saturate(0.9) contrast(0.95) sepia(0.08)',
+    lift: { r: 0.05, g: 0.07, b: 0.062 },
+    white: { r: 0.93, g: 0.955, b: 0.94 },
+    gamma: { r: 0.96, g: 1.03, b: 1.0 },
+    contrast: 0.14,
+    sat: 0.88,
+    splitShadow: [-8, 6, 8],
+    splitHigh: [2, 5, 0],
+    blueMute: 0.28,
+    bloom: 0.12,
     grain: 0.1,
-    vignette: 0.34,
-  },
-  {
-    id: '669',
-    name: '669',
-    css: 'saturate(0.8) contrast(0.95) sepia(0.16) hue-rotate(6deg)',
-    lift: 0.05,
-    gamma: { r: 1.02, g: 0.98, b: 1.0 },
-    gain: { r: 0.98, g: 1.0, b: 0.93 },
-    sat: 0.76,
-    contrast: 0.13,
-    bloom: 0.08,
-    grain: 0.08,
-    vignette: 0.28,
-  },
-  {
-    id: 'nb',
-    name: 'N&B 667',
-    css: 'grayscale(1) sepia(0.14) contrast(0.98)',
-    lift: 0.04,
-    gamma: { r: 1.0, g: 1.0, b: 1.0 },
-    gain: { r: 1.04, g: 1.0, b: 0.94 },
-    sat: 0,
-    contrast: 0.22,
-    bloom: 0.1,
-    grain: 0.14,
     vignette: 0.3,
   },
   {
+    // 669 Polacolor : pastel mais bien saturé, léger voile bleu,
+    // le plus fidèle des films instantanés — ISO 80, grain fin.
+    id: '669',
+    name: '669',
+    css: 'saturate(0.86) contrast(0.96) sepia(0.05) hue-rotate(-4deg) brightness(1.01)',
+    lift: { r: 0.03, g: 0.036, b: 0.052 },
+    white: { r: 0.965, g: 0.965, b: 0.955 },
+    gamma: { r: 1.0, g: 1.0, b: 1.03 },
+    contrast: 0.1,
+    sat: 0.85,
+    splitShadow: [0, 3, 6],
+    splitHigh: [4, 2, 2],
+    bloom: 0.1,
+    grain: 0.05,
+    vignette: 0.18,
+  },
+  {
+    // 667 N&B : contraste fort, ombres profondes et nettes,
+    // blancs ivoire (jamais stériles), grain visible.
+    id: 'nb',
+    name: 'N&B 667',
+    css: 'grayscale(1) sepia(0.12) contrast(1.1)',
+    lift: { r: 0.025, g: 0.022, b: 0.02 },
+    white: { r: 0.975, g: 0.955, b: 0.915 },
+    gamma: { r: 1.0, g: 1.0, b: 1.0 },
+    contrast: 0.3,
+    sat: 0,
+    splitShadow: [0, 0, 0],
+    splitHigh: [6, 3, -3],
+    bloom: 0.12,
+    grain: 0.16,
+    vignette: 0.26,
+  },
+  {
+    // Expiré : voile magenta dans les ombres, jaunissement des rehauts,
+    // contraste plat, saturation en berne, développement inégal.
     id: 'expire',
     name: 'Expiré',
-    css: 'sepia(0.32) saturate(0.62) contrast(0.82) brightness(1.05)',
-    lift: 0.14,
-    gamma: { r: 1.03, g: 0.97, b: 0.9 },
-    gain: { r: 1.02, g: 0.95, b: 0.88 },
-    sat: 0.55,
-    contrast: -0.06,
+    css: 'sepia(0.28) saturate(0.52) contrast(0.82) brightness(1.05) hue-rotate(-8deg)',
+    lift: { r: 0.13, g: 0.095, b: 0.115 },
+    white: { r: 0.93, g: 0.91, b: 0.855 },
+    gamma: { r: 1.05, g: 0.96, b: 0.9 },
+    contrast: -0.12,
+    sat: 0.5,
+    splitShadow: [10, -4, 8],
+    splitHigh: [8, 6, -8],
+    blueMute: 0.3,
     bloom: 0.2,
-    grain: 0.16,
-    vignette: 0.5,
+    grain: 0.18,
+    vignette: 0.42,
     edgeCast: 'rgba(190, 80, 150, 0.16)',
   },
   {
     id: 'aucun',
     name: 'Aucun',
     css: 'none',
-    lift: 0,
+    lift: { r: 0, g: 0, b: 0 },
+    white: { r: 1, g: 1, b: 1 },
     gamma: { r: 1, g: 1, b: 1 },
-    gain: { r: 1, g: 1, b: 1 },
-    sat: 1,
     contrast: 0,
+    sat: 1,
+    splitShadow: [0, 0, 0],
+    splitHigh: [0, 0, 0],
     bloom: 0,
     grain: 0,
     vignette: 0,
@@ -108,8 +152,8 @@ const smooth = (x) => x * x * (3 - 2 * x);
 function buildLut(preset, ch, adjust) {
   const lut = new Uint8Array(256);
   const g = preset.gamma[ch];
-  const gain = preset.gain[ch];
-  const { lift } = preset;
+  const lift = preset.lift[ch];
+  const white = preset.white[ch];
   const expo = adjust?.expo || 0;
   const contrast = preset.contrast + (adjust?.contrast || 0);
   const gainExpo = Math.pow(2, expo);
@@ -120,9 +164,10 @@ function buildLut(preset, ch, adjust) {
     // Courbe de contraste filmique : épaules douces via smoothstep.
     if (contrast >= 0) x = lerp(x, smooth(x), Math.min(1, contrast));
     else x = lerp(x, 0.22 + x * 0.56, Math.min(1, -contrast));
-    // Lift / gamma / gain — les dérives colorées viennent d'ici.
+    // Tons moyens par canal.
     x = Math.pow(Math.min(1, Math.max(0, x)), 1 / g);
-    x = x * (gain - lift) + lift;
+    // Voile des noirs et plafond des blancs : les extrêmes sont teintés.
+    x = lift + x * (white - lift);
     lut[i] = clamp255(Math.round(x * 255));
   }
   return lut;
@@ -144,24 +189,44 @@ export function applyPreset(canvas, preset, seed, adjust) {
   ctx.drawImage(soft, 0, 0, w, h);
   ctx.globalAlpha = 1;
 
-  // 2 — Grading par pixel : LUTs par canal + saturation.
+  // 2 — Grading par pixel : mixeur, saturation, LUTs, croisement tonal.
   const lutR = buildLut(preset, 'r', adjust);
   const lutG = buildLut(preset, 'g', adjust);
   const lutB = buildLut(preset, 'b', adjust);
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   const sat = preset.sat;
+  const olive = preset.olive || 0;
+  const blueMute = preset.blueMute || 0;
+  const [ssr, ssg, ssb] = preset.splitShadow;
+  const [shr, shg, shb] = preset.splitHigh;
+  const hasSplit = ssr || ssg || ssb || shr || shg || shb;
   for (let i = 0; i < d.length; i += 4) {
     let r = d[i], g = d[i + 1], b = d[i + 2];
+    let luma = 0.299 * r + 0.587 * g + 0.114 * b;
+    // Verts olive (SX-70) et bleus mats (faiblesse cyan des intégrales).
+    if (olive) g = g * (1 - olive) + r * olive;
+    if (blueMute) b = b * (1 - blueMute) + luma * blueMute;
     if (sat !== 1) {
-      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
       r = luma + (r - luma) * sat;
       g = luma + (g - luma) * sat;
       b = luma + (b - luma) * sat;
     }
-    d[i] = lutR[clamp255(r | 0)];
-    d[i + 1] = lutG[clamp255(g | 0)];
-    d[i + 2] = lutB[clamp255(b | 0)];
+    r = lutR[clamp255(r | 0)];
+    g = lutG[clamp255(g | 0)];
+    b = lutB[clamp255(b | 0)];
+    // Croisement colorimétrique : teintes distinctes ombres / rehauts.
+    if (hasSplit) {
+      const t = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      const ts = (1 - t) * (1 - t);
+      const th = t * t;
+      r += ssr * ts + shr * th;
+      g += ssg * ts + shg * th;
+      b += ssb * ts + shb * th;
+    }
+    d[i] = clamp255(r);
+    d[i + 1] = clamp255(g);
+    d[i + 2] = clamp255(b);
   }
   ctx.putImageData(img, 0, 0);
 
