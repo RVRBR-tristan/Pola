@@ -191,7 +191,7 @@ button {
   background: var(--brand);
   color: #fff;
 }
-.chip:focus-visible, .seg-btn:focus-visible, .btn:focus-visible,
+.chip:focus-visible, .btn:focus-visible,
 .ctrl:focus-visible, .shutter:focus-visible, .back:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
@@ -362,34 +362,63 @@ button {
   border-radius: 4px;
 }
 
+.adjust-row-toggle { justify-content: space-between; }
+.adjust-row-toggle label { width: auto; }
+
+.ig-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+  transition: background 150ms ease-out;
+  margin: 0;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: left 150ms ease-out;
+}
+.switch:checked { background: var(--brand); }
+.switch:checked::after { left: 23px; }
+.switch:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+.swatches { display: inline-flex; gap: 12px; }
+.swatches[hidden] { display: none; }
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  transition: box-shadow 150ms ease-out, transform 120ms ease-out;
+}
+.swatch:active { transform: scale(0.92); }
+.swatch-blanc { background: #fff; }
+.swatch-noir { background: #0c0c0d; border-color: #0c0c0d; }
+.swatch.is-on { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5.5px var(--brand); }
+.swatch:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
 .export-row {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 8px 20px 6px;
-}
-
-.seg {
-  display: flex;
-  background: var(--surface);
-  border-radius: 999px;
-  padding: 4px;
-  gap: 4px;
-}
-.seg-btn {
-  flex: 1;
-  padding: 9px 6px;
-  border-radius: 999px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--muted);
-  min-height: 40px;
-  transition: background 150ms ease-out, color 150ms ease-out;
-}
-.seg-btn.is-on {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .btn {

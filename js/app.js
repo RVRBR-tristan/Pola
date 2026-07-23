@@ -15,6 +15,7 @@ const state = {
   expo: 0,       // -100..100 → ± 0,8 EV
   contrast: 0,   // -100..100 → ± 0,5
   igSize: 80,    // taille du polaroid dans le canevas 4:5 (40..100)
+  igDark: false, // pastille : fond blanc ou noir
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -218,11 +219,7 @@ function applySettings(s) {
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
   state.format = s.format || 'polaroid';
-  document.querySelectorAll('#format-seg .seg-btn').forEach((b) => {
-    const on = b.dataset.format === state.format;
-    b.classList.toggle('is-on', on);
-    b.setAttribute('aria-checked', String(on));
-  });
+  state.igDark = state.format === 'ig-noir';
   syncIgControls();
 }
 
@@ -559,22 +556,28 @@ $('adj-size-val').addEventListener('click', () => {
   $('adj-size-val').textContent = '80';
   if (state.source) updateDisplay();
 });
+// L'interrupteur « Fond 4:5 » et les pastilles blanc/noir pilotent le format.
 function syncIgControls() {
-  $('size-row').hidden = state.format === 'polaroid';
+  const ig = state.format !== 'polaroid';
+  $('toggle-ig').checked = ig;
+  $('size-row').hidden = !ig;
+  $('bg-swatches').hidden = !ig;
+  $('sw-blanc').classList.toggle('is-on', !state.igDark);
+  $('sw-blanc').setAttribute('aria-checked', String(!state.igDark));
+  $('sw-noir').classList.toggle('is-on', state.igDark);
+  $('sw-noir').setAttribute('aria-checked', String(state.igDark));
 }
 
-$('format-seg').addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn');
-  if (!btn) return;
-  state.format = btn.dataset.format;
-  document.querySelectorAll('#format-seg .seg-btn').forEach((b) => {
-    const on = b === btn;
-    b.classList.toggle('is-on', on);
-    b.setAttribute('aria-checked', String(on));
-  });
+function setIgFormat() {
+  state.format = $('toggle-ig').checked ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
   syncIgControls();
   if (state.source) updateDisplay();
-});
+  schedulePersist();
+}
+
+$('toggle-ig').addEventListener('change', setIgFormat);
+$('sw-blanc').addEventListener('click', () => { state.igDark = false; setIgFormat(); });
+$('sw-noir').addEventListener('click', () => { state.igDark = true; setIgFormat(); });
 
 $('btn-download').addEventListener('click', download);
 

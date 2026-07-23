@@ -90,6 +90,16 @@
           <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
           <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
         </div>
+        <div class="adjust-row adjust-row-toggle">
+          <label for="toggle-ig">Fond 4:5</label>
+          <div class="ig-controls">
+            <div class="swatches" id="bg-swatches" hidden role="radiogroup" aria-label="Couleur du fond">
+              <button class="swatch swatch-blanc is-on" id="sw-blanc" role="radio" aria-checked="true" aria-label="Fond blanc"></button>
+              <button class="swatch swatch-noir" id="sw-noir" role="radio" aria-checked="false" aria-label="Fond noir"></button>
+            </div>
+            <input type="checkbox" id="toggle-ig" class="switch">
+          </div>
+        </div>
         <div class="adjust-row" id="size-row" hidden>
           <label for="adj-size">Taille</label>
           <input type="range" id="adj-size" min="40" max="100" value="80" step="1">
@@ -98,11 +108,6 @@
       </div>
 
       <div class="export-row">
-        <div class="seg" role="radiogroup" aria-label="Format d’export" id="format-seg">
-          <button class="seg-btn is-on" data-format="polaroid" role="radio" aria-checked="true">Polaroid</button>
-          <button class="seg-btn" data-format="ig-blanc" role="radio" aria-checked="false">4:5 blanc</button>
-          <button class="seg-btn" data-format="ig-noir" role="radio" aria-checked="false">4:5 noir</button>
-        </div>
         <button class="btn btn-primary" id="btn-download">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2 7.6 10.8 9 9.4l2 2V3h2v8.4l2-2 1.4 1.4-4.4 4.4ZM5 19v2h14v-2H5Z"/></svg>
           Télécharger
