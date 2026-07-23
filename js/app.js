@@ -7,6 +7,8 @@ const state = {
   source: null,          // canvas plein format de la prise de vue
   preset: PRESETS[0],
   frame: FRAMES[0],
+  expo: 0,       // -100..100 → ± 0,8 EV
+  contrast: 0,   // -100..100 → ± 0,5
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -100,7 +102,10 @@ async function render() {
   setTimeout(() => {
     renderQueued = false;
     const photo = cropToOpening(state.source, state.frame);
-    applyPreset(photo, state.preset, state.seed);
+    applyPreset(photo, state.preset, state.seed, {
+      expo: (state.expo / 100) * 0.8,
+      contrast: (state.contrast / 100) * 0.5,
+    });
     renderPolaroid(renderCanvas, state.frame, photo, state.seed);
     positionDevOverlay();
   }, 0);
@@ -130,6 +135,8 @@ function develop() {
 function showEditor(source) {
   state.source = source;
   state.seed = (Math.random() * 0xffffffff) >>> 0;
+  setAdjust('expo', 0);
+  setAdjust('contrast', 0);
   stopCamera();
   $('shoot').classList.remove('is-active');
   $('edit').classList.add('is-active');
@@ -251,6 +258,29 @@ $('file-input').addEventListener('change', (e) => {
 });
 
 $('btn-back').addEventListener('click', showShoot);
+
+/* ── Réglages exposition / contraste ── */
+
+const ADJUST_IDS = { expo: 'adj-expo', contrast: 'adj-contrast' };
+let adjustTimer;
+
+function setAdjust(key, value) {
+  state[key] = value;
+  $(ADJUST_IDS[key]).value = value;
+  $(ADJUST_IDS[key] + '-val').textContent = value > 0 ? `+${value}` : String(value);
+}
+
+for (const key of Object.keys(ADJUST_IDS)) {
+  $(ADJUST_IDS[key]).addEventListener('input', (e) => {
+    setAdjust(key, Number(e.target.value));
+    clearTimeout(adjustTimer);
+    adjustTimer = setTimeout(render, 120);
+  });
+  $(ADJUST_IDS[key] + '-val').addEventListener('click', () => {
+    setAdjust(key, 0);
+    render();
+  });
+}
 
 $('format-seg').addEventListener('click', (e) => {
   const btn = e.target.closest('.seg-btn');

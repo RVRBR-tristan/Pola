@@ -72,6 +72,19 @@
       <div class="chip-row" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>
       <div class="chip-row" id="frame-strip" role="radiogroup" aria-label="Cadre"></div>
 
+      <div class="adjust-rows">
+        <div class="adjust-row">
+          <label for="adj-expo">Exposition</label>
+          <input type="range" id="adj-expo" min="-100" max="100" value="0" step="1">
+          <button class="adjust-val" id="adj-expo-val" title="Réinitialiser">0</button>
+        </div>
+        <div class="adjust-row">
+          <label for="adj-contrast">Contraste</label>
+          <input type="range" id="adj-contrast" min="-100" max="100" value="0" step="1">
+          <button class="adjust-val" id="adj-contrast-val" title="Réinitialiser">0</button>
+        </div>
+      </div>
+
       <div class="export-row">
         <div class="seg" role="radiogroup" aria-label="Format d’export" id="format-seg">
           <button class="seg-btn is-on" data-format="polaroid" role="radio" aria-checked="true">Polaroid</button>

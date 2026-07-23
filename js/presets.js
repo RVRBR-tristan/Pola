@@ -103,16 +103,23 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (x) => x * x * (3 - 2 * x);
 
 // Table de correspondance 0..255 pour un canal donné.
-function buildLut(preset, ch) {
+// `adjust` : réglages utilisateur { expo (EV), contrast (-1..1) },
+// repliés dans la courbe du film.
+function buildLut(preset, ch, adjust) {
   const lut = new Uint8Array(256);
   const g = preset.gamma[ch];
   const gain = preset.gain[ch];
-  const { lift, contrast } = preset;
+  const { lift } = preset;
+  const expo = adjust?.expo || 0;
+  const contrast = preset.contrast + (adjust?.contrast || 0);
+  const gainExpo = Math.pow(2, expo);
   for (let i = 0; i < 256; i++) {
     let x = i / 255;
+    // Exposition : comme si le film avait reçu plus ou moins de lumière.
+    x = Math.min(1, x * gainExpo);
     // Courbe de contraste filmique : épaules douces via smoothstep.
-    if (contrast >= 0) x = lerp(x, smooth(x), contrast);
-    else x = lerp(x, 0.22 + x * 0.56, -contrast);
+    if (contrast >= 0) x = lerp(x, smooth(x), Math.min(1, contrast));
+    else x = lerp(x, 0.22 + x * 0.56, Math.min(1, -contrast));
     // Lift / gamma / gain — les dérives colorées viennent d'ici.
     x = Math.pow(Math.min(1, Math.max(0, x)), 1 / g);
     x = x * (gain - lift) + lift;
@@ -122,7 +129,7 @@ function buildLut(preset, ch) {
 }
 
 // Applique le rendu film sur un canvas (modifie le canvas en place).
-export function applyPreset(canvas, preset, seed) {
+export function applyPreset(canvas, preset, seed, adjust) {
   const ctx = canvas.getContext('2d');
   const { width: w, height: h } = canvas;
 
@@ -138,9 +145,9 @@ export function applyPreset(canvas, preset, seed) {
   ctx.globalAlpha = 1;
 
   // 2 — Grading par pixel : LUTs par canal + saturation.
-  const lutR = buildLut(preset, 'r');
-  const lutG = buildLut(preset, 'g');
-  const lutB = buildLut(preset, 'b');
+  const lutR = buildLut(preset, 'r', adjust);
+  const lutG = buildLut(preset, 'g', adjust);
+  const lutB = buildLut(preset, 'b', adjust);
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   const sat = preset.sat;
