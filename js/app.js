@@ -75,6 +75,70 @@ function stopCamera() {
   }
 }
 
+/* ── Mise au point au tap ───────────────────────────────── */
+
+// Convertit un tap dans la fenêtre du viseur en coordonnées normalisées
+// de l'image capteur (la vidéo remplit la fenêtre en « cover », et la
+// caméra avant est affichée en miroir).
+function tapToVideoCoords(e) {
+  const rect = $('live-window').getBoundingClientRect();
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh || !rect.width) return null;
+  let px = (e.clientX - rect.left) / rect.width;
+  let py = (e.clientY - rect.top) / rect.height;
+  if (state.facing === 'user') px = 1 - px;
+  const winRatio = rect.width / rect.height;
+  const vidRatio = vw / vh;
+  if (vidRatio > winRatio) {
+    const visible = winRatio / vidRatio; // fraction de largeur visible
+    px = (1 - visible) / 2 + px * visible;
+  } else {
+    const visible = vidRatio / winRatio;
+    py = (1 - visible) / 2 + py * visible;
+  }
+  return { x: Math.min(1, Math.max(0, px)), y: Math.min(1, Math.max(0, py)) };
+}
+
+let refocusTimer;
+async function focusAt(pt) {
+  const track = state.stream?.getVideoTracks()[0];
+  if (!track || !track.getCapabilities) return;
+  const caps = track.getCapabilities();
+  const modes = caps.focusMode || [];
+  const adv = { pointsOfInterest: [{ x: pt.x, y: pt.y }] };
+  if (modes.includes('single-shot')) adv.focusMode = 'single-shot';
+  try {
+    await track.applyConstraints({ advanced: [adv] });
+  } catch { /* capacité absente : le focus continu natif reste actif */ }
+  // Retour au suivi continu après la mise au point ponctuelle.
+  if (modes.includes('continuous')) {
+    clearTimeout(refocusTimer);
+    refocusTimer = setTimeout(() => {
+      track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+    }, 4000);
+  }
+}
+
+// Anneau de mise au point, comme la caméra native.
+function showFocusRing(e) {
+  const win = $('live-window');
+  const rect = win.getBoundingClientRect();
+  const ring = document.createElement('div');
+  ring.className = 'focus-ring';
+  ring.style.left = `${e.clientX - rect.left}px`;
+  ring.style.top = `${e.clientY - rect.top}px`;
+  win.appendChild(ring);
+  ring.addEventListener('animationend', () => ring.remove(), { once: true });
+}
+
+$('live-window').addEventListener('click', (e) => {
+  if (!state.stream) return;
+  const pt = tapToVideoCoords(e);
+  if (!pt) return;
+  showFocusRing(e);
+  focusAt(pt);
+});
+
 /* ── Capture & import ───────────────────────────────────── */
 
 function captureFromVideo() {
