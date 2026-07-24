@@ -17,8 +17,7 @@ const state = {
   sat: 82,       // 0..160 → saturation absolue (init. sur le film)
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
-  igSize: 80,    // taille du polaroid dans le canevas 4:5 (40..100)
-  igDark: false, // pastille : fond blanc ou noir
+  igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -163,7 +162,7 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, state.format === 'ig-noir', { size: state.igSize });
+    const out = renderInstagram(polaroidCanvas, false, { size: state.igSize });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -258,11 +257,11 @@ function applySettings(s) {
   setAdjust('grain', s.grain ?? adjustDefault('grain'));
   setAdjust('blur', s.blur || 0);
   state.igSize = s.igSize ?? 80;
+  const igOn = s.format && s.format !== 'polaroid';
+  state.igSize = igOn ? (s.igSize ?? 80) : 0;
+  state.format = igOn ? 'ig-blanc' : 'polaroid';
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
-  state.format = s.format || 'polaroid';
-  state.igDark = state.format === 'ig-noir';
-  syncIgControls();
 }
 
 /* ── Navigation ─────────────────────────────────────────── */
@@ -382,7 +381,7 @@ function updateLiveFrame() {
 
 function exportCanvas() {
   if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, state.format === 'ig-noir', { size: state.igSize });
+  return renderInstagram(polaroidCanvas, false, { size: state.igSize });
 }
 
 function toBlob(canvas) {
@@ -671,9 +670,7 @@ let ctlPrev = null;
 
 function openControl(key) {
   ctlKey = key;
-  ctlPrev = key === 'fond'
-    ? { format: state.format, igDark: state.igDark, igSize: state.igSize }
-    : state[key];
+  ctlPrev = key === 'fond' ? state.igSize : state[key];
   for (const [k, row] of Object.entries(CONTROL_ROWS)) $(row).hidden = k !== key;
   $('drawer-reglages').hidden = true;
   $('drawer-control').hidden = false;
@@ -681,17 +678,8 @@ function openControl(key) {
 
 function closeControl(apply) {
   if (!apply && ctlKey) {
-    if (ctlKey === 'fond') {
-      state.igDark = ctlPrev.igDark;
-      state.igSize = ctlPrev.igSize;
-      state.format = ctlPrev.format;
-      $('adj-size').value = state.igSize;
-      $('adj-size-val').textContent = String(state.igSize);
-      syncIgControls();
-      if (state.source) updateDisplay();
-    } else {
-      setAdjust(ctlKey, ctlPrev);
-    }
+    if (ctlKey === 'fond') setIgSize(ctlPrev);
+    else setAdjust(ctlKey, ctlPrev);
   }
   ctlKey = null;
   render();
@@ -705,41 +693,22 @@ document.querySelectorAll('#drawer-reglages .ric').forEach((b) => {
 $('ctl-ok').addEventListener('click', () => closeControl(true));
 $('ctl-cancel').addEventListener('click', () => closeControl(false));
 
-/* ── Réglages du canevas 4:5 (taille, ombre) ── */
+/* ── Fond 4:5 : un seul curseur — 0 = désactivé, au-delà = taille ── */
 
-$('adj-size').addEventListener('input', (e) => {
-  state.igSize = Number(e.target.value);
-  $('adj-size-val').textContent = String(state.igSize);
+function setIgSize(v) {
+  state.igSize = v;
+  state.format = v > 0 ? 'ig-blanc' : 'polaroid';
+  $('adj-size').value = v;
+  $('adj-size-val').textContent = String(v);
   if (state.source) updateDisplay();
-});
+}
+
+$('adj-size').addEventListener('input', (e) => setIgSize(Number(e.target.value)));
+$('adj-size').addEventListener('change', () => schedulePersist());
 $('adj-size-val').addEventListener('click', () => {
-  state.igSize = 80;
-  $('adj-size').value = 80;
-  $('adj-size-val').textContent = '80';
-  if (state.source) updateDisplay();
-});
-// L'interrupteur « Fond 4:5 » et les pastilles blanc/noir pilotent le format.
-function syncIgControls() {
-  const ig = state.format !== 'polaroid';
-  $('toggle-ig').checked = ig;
-  $('size-row').hidden = !ig;
-  $('bg-swatches').hidden = !ig;
-  $('sw-blanc').classList.toggle('is-on', !state.igDark);
-  $('sw-blanc').setAttribute('aria-checked', String(!state.igDark));
-  $('sw-noir').classList.toggle('is-on', state.igDark);
-  $('sw-noir').setAttribute('aria-checked', String(state.igDark));
-}
-
-function setIgFormat() {
-  state.format = $('toggle-ig').checked ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
-  syncIgControls();
-  if (state.source) updateDisplay();
+  setIgSize(0);
   schedulePersist();
-}
-
-$('toggle-ig').addEventListener('change', setIgFormat);
-$('sw-blanc').addEventListener('click', () => { state.igDark = false; setIgFormat(); });
-$('sw-noir').addEventListener('click', () => { state.igDark = true; setIgFormat(); });
+});
 
 $('btn-download').addEventListener('click', download);
 
@@ -751,7 +720,6 @@ buildChips($('frame-strip'), FRAMES, state.frame, pickFrame);
 buildChips($('shoot-frame-strip'), FRAMES, state.frame, pickFrame);
 syncPresetUi();
 updateLiveFrame();
-syncIgControls();
 startCamera();
 
 // Ceinture et bretelles : dès que la vidéo joue, le message d'erreur

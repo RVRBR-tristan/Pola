@@ -142,22 +142,10 @@
             <input type="range" id="adj-blur" min="0" max="100" value="0" step="1">
             <button class="adjust-val" id="adj-blur-val" title="Réinitialiser">0</button>
           </div>
-          <div id="row-fond" hidden>
-            <div class="adjust-row adjust-row-toggle">
-              <label for="toggle-ig">Fond 4:5</label>
-              <div class="ig-controls">
-                <input type="checkbox" id="toggle-ig" class="switch">
-                <div class="swatches" id="bg-swatches" hidden role="radiogroup" aria-label="Couleur du fond">
-                  <button class="swatch swatch-blanc is-on" id="sw-blanc" role="radio" aria-checked="true" aria-label="Fond blanc"></button>
-                  <button class="swatch swatch-noir" id="sw-noir" role="radio" aria-checked="false" aria-label="Fond noir"></button>
-                </div>
-              </div>
-            </div>
-            <div class="adjust-row" id="size-row" hidden>
-              <label for="adj-size">Taille</label>
-              <input type="range" id="adj-size" min="40" max="100" value="80" step="1">
-              <button class="adjust-val" id="adj-size-val" title="Réinitialiser">80</button>
-            </div>
+          <div class="adjust-row" id="row-fond" hidden>
+            <label for="adj-size">Fond 4:5</label>
+            <input type="range" id="adj-size" min="0" max="100" value="0" step="1">
+            <button class="adjust-val" id="adj-size-val" title="Désactiver">0</button>
           </div>
         </div>
         <button class="ctl-btn ctl-ok" id="ctl-ok" aria-label="Valider">
