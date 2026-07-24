@@ -1,4 +1,4 @@
-import { PRESETS, applyPreset } from './presets.js';
+import { PRESETS, applyPreset, applyLightLeak } from './presets.js';
 import { FRAMES, renderPolaroid, renderInstagram, assetsReady } from './frames.js';
 import { putShot, getShot, getAllShots, deleteShots } from './store.js';
 
@@ -18,6 +18,8 @@ const state = {
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
+  leak: 0,       // light leak : 0 = désactivé, 1..100 = intensité
+  leakSeed: 1,
   zoom: 100,     // recadrage : 100..300 %
   rot: 0,        // redressement : -45..45°
   cropX: 0,      // déplacement du cadrage, -1..1 de la marge disponible
@@ -164,6 +166,7 @@ async function render(fast = false) {
     wantFull = false;
     const photo = cropToOpening(state.source, state.frame, full ? 1 : 0.35);
     applyPreset(photo, state.preset, state.seed, currentAdjust());
+    if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
     renderPolaroid(polaroidCanvas, state.frame, photo);
     updateDisplay();
     if (full) schedulePersist();
@@ -239,6 +242,8 @@ async function persistCurrent() {
       sat: state.sat,
       grain: state.grain,
       blur: state.blur,
+      leak: state.leak,
+      leakSeed: state.leakSeed,
       igSize: state.igSize,
       format: state.format,
       zoom: state.zoom,
@@ -284,6 +289,8 @@ function applySettings(s) {
   state.format = igOn ? 'ig-blanc' : 'polaroid';
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
+  setAdjust('leak', s.leak ?? 0);
+  state.leakSeed = s.leakSeed ?? state.leakSeed;
   setAdjust('zoom', s.zoom ?? 100);
   setAdjust('rot', s.rot ?? 0);
   state.cropX = s.cropX || 0;
@@ -310,6 +317,8 @@ async function showEditor(source) {
   setAdjust('expo', 0);
   setAdjust('contrast', 0);
   setAdjust('blur', 0);
+  setAdjust('leak', 0);
+  state.leakSeed = (Math.random() * 0xffffffff) >>> 0;
   setAdjust('zoom', 100);
   setAdjust('rot', 0);
   state.cropX = 0;
@@ -664,6 +673,7 @@ $('btn-delete').addEventListener('click', async () => {
 const ADJUST_IDS = {
   expo: 'adj-expo', contrast: 'adj-contrast', sat: 'adj-sat',
   grain: 'adj-grain', blur: 'adj-blur', zoom: 'adj-zoom', rot: 'adj-rot',
+  leak: 'adj-leak',
 };
 const SIGNED = new Set(['expo', 'contrast', 'rot']);
 
@@ -703,7 +713,7 @@ for (const key of Object.keys(ADJUST_IDS)) {
 
 /* ── Navigation basse de l'éditeur : Films / Cadres / Réglages ── */
 
-const NAV_PANES = { films: 'edit-film-strip', cadres: 'frame-strip', reglages: 'drawer-reglages' };
+const NAV_PANES = { films: 'edit-film-strip', lumiere: 'drawer-lumiere', cadres: 'frame-strip', reglages: 'drawer-reglages' };
 
 function showNav(name) {
   for (const [nav, pane] of Object.entries(NAV_PANES)) {
@@ -800,6 +810,13 @@ const endPan = () => {
 };
 renderCanvas.addEventListener('pointerup', endPan);
 renderCanvas.addEventListener('pointercancel', endPan);
+
+// Nouvelle fuite : nouveau tirage aléatoire du motif.
+$('btn-leak-reroll').addEventListener('click', () => {
+  state.leakSeed = (Math.random() * 0xffffffff) >>> 0;
+  if (state.leak === 0) setAdjust('leak', 55); // active si éteint
+  render();
+});
 
 $('btn-download').addEventListener('click', download);
 

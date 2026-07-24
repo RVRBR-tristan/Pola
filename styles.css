@@ -324,6 +324,21 @@ button {
 .ric:active { background: var(--surface); }
 .ric:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
+.leak-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 20px;
+}
+.leak-pane[hidden] { display: none; }
+.leak-reroll {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.leak-reroll svg { width: 16px; height: 16px; fill: currentColor; }
+
 .control-pane {
   display: flex;
   align-items: center;

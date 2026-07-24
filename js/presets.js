@@ -393,6 +393,71 @@ export function applyPreset(canvas, preset, seed, adjust) {
   ctx.globalAlpha = 1;
 }
 
+// ── Light leaks : fuites de lumière procédurales, seedées ──
+// Trois archétypes documentés des vraies fuites (boîtier percé, dos mal
+// fermé) : halo débordant d'un bord, traînée traversante, blob de coin.
+// Palette chaude — orange, rouge, magenta — en fusion « screen ».
+export function applyLightLeak(canvas, seed, intensity) {
+  const ctx = canvas.getContext('2d');
+  const { width: w, height: h } = canvas;
+  const rnd = mulberry32(seed ^ 0x1e4b7);
+  const diag = Math.hypot(w, h);
+  ctx.globalCompositeOperation = 'screen';
+  const warm = () => {
+    const t = rnd();
+    if (t < 0.5) return [255, 130 + rnd() * 60, 30 + rnd() * 40];   // orange
+    if (t < 0.8) return [255, 60 + rnd() * 50, 40 + rnd() * 50];    // rouge
+    return [255, 70 + rnd() * 40, 150 + rnd() * 80];                // magenta
+  };
+  const n = 1 + Math.floor(rnd() * 2.4);
+  for (let i = 0; i < n; i++) {
+    const kind = rnd();
+    const [r, g, b] = warm();
+    const a = intensity * (0.5 + rnd() * 0.45);
+    if (kind < 0.45) {
+      // Halo : centre hors cadre, déborde d'un bord.
+      const edge = Math.floor(rnd() * 4);
+      const t = rnd();
+      const cx = edge === 1 ? w * 1.15 : edge === 3 ? -w * 0.15 : t * w;
+      const cy = edge === 0 ? -h * 0.15 : edge === 2 ? h * 1.15 : t * h;
+      const rad = diag * (0.35 + rnd() * 0.55);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0, `rgba(255,${Math.min(255, g + 80)},${Math.min(255, b + 60)},${a})`);
+      grad.addColorStop(0.35, `rgba(${r},${g},${b},${a * 0.7})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    } else if (kind < 0.8) {
+      // Traînée : bande douce traversante, légèrement inclinée.
+      const ang = (rnd() - 0.5) * 0.6 + (rnd() < 0.5 ? 0 : Math.PI / 2);
+      const off = (rnd() - 0.5) * w * 0.9;
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(ang);
+      const bw = w * (0.08 + rnd() * 0.18);
+      const grad = ctx.createLinearGradient(off - bw, 0, off + bw, 0);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.85})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(-diag, -diag, diag * 2, diag * 2);
+      ctx.restore();
+    } else {
+      // Blob de coin, plus intense au cœur.
+      const cx = rnd() < 0.5 ? w * (0.02 + rnd() * 0.1) : w * (0.88 + rnd() * 0.1);
+      const cy = rnd() < 0.5 ? h * (0.02 + rnd() * 0.1) : h * (0.88 + rnd() * 0.1);
+      const rad = diag * (0.14 + rnd() * 0.22);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0, `rgba(255,${Math.min(255, g + 90)},${Math.min(255, b + 80)},${Math.min(1, a * 1.2)})`);
+      grad.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.6})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 // PRNG déterministe : le grain ne « saute » pas quand on change de cadre.
 export function mulberry32(seed) {
   let a = seed >>> 0;
