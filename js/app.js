@@ -553,13 +553,35 @@ async function refreshGallery() {
     check.className = 'g-check';
     check.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9.6 16.2 5.4 12l-1.4 1.4 5.6 5.6 10-10-1.4-1.4-8.6 8.6Z"/></svg>';
     b.appendChild(check);
+    let lpTimer = null;
+    let suppressClick = false;
     b.addEventListener('click', () => {
+      if (suppressClick) { suppressClick = false; return; }
       if (selecting) {
         toggleSelected(shot.id, b);
       } else {
         getShot(shot.id).then((full) => full && openShot(full));
       }
     });
+    // Long tap : entre en mode sélection avec cette image sélectionnée.
+    b.addEventListener('pointerdown', () => {
+      clearTimeout(lpTimer);
+      lpTimer = setTimeout(() => {
+        lpTimer = null;
+        suppressClick = true;
+        if (!selecting) enterSelection();
+        toggleSelected(shot.id, b);
+        navigator.vibrate?.(12);
+      }, 480);
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel', 'pointermove']) {
+      b.addEventListener(ev, (e) => {
+        if (ev !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 2) {
+          clearTimeout(lpTimer);
+        }
+      });
+    }
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
     grid.appendChild(b);
   }
 }
@@ -593,16 +615,17 @@ function exitSelection() {
 $('btn-gallery').addEventListener('click', showGallery);
 $('btn-gallery-back').addEventListener('click', showShoot);
 
+function enterSelection() {
+  selecting = true;
+  $('gallery-grid').classList.add('is-selecting');
+  $('gallery-actions').hidden = false;
+  $('btn-select').textContent = 'Annuler';
+  syncDeleteButton();
+}
+
 $('btn-select').addEventListener('click', () => {
-  if (selecting) {
-    exitSelection();
-  } else {
-    selecting = true;
-    $('gallery-grid').classList.add('is-selecting');
-    $('gallery-actions').hidden = false;
-    $('btn-select').textContent = 'Annuler';
-    syncDeleteButton();
-  }
+  if (selecting) exitSelection();
+  else enterSelection();
 });
 
 $('btn-select-all').addEventListener('click', () => {
