@@ -18,6 +18,10 @@ const state = {
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
+  zoom: 100,     // recadrage : 100..300 %
+  rot: 0,        // redressement : -45..45°
+  cropX: 0,      // déplacement du cadrage, -1..1 de la marge disponible
+  cropY: 0,
   format: 'polaroid',
   seed: 1,
   facing: 'environment',
@@ -103,18 +107,32 @@ function sourceFromImage(imgEl) {
 function cropToOpening(source, frame, sf = 1) {
   const { w, h } = frame.img;
   const outW = Math.round(w * frame.scale * sf), outH = Math.round(h * frame.scale * sf);
-  const ratio = outW / outH;
-  let sw = source.width, sh = source.height;
-  if (sw / sh > ratio) sw = sh * ratio;
-  else sh = sw / ratio;
-  const sx = (source.width - sw) / 2;
-  const sy = (source.height - sh) / 2;
   const c = document.createElement('canvas');
   c.width = outW;
   c.height = outH;
   const ctx = c.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, outW, outH);
+  // Recadrage : zoom, redressement et déplacement. L'échelle de base
+  // couvre la fenêtre même une fois pivotée (pas de coins vides).
+  const rot = (state.rot * Math.PI) / 180;
+  const zoom = state.zoom / 100;
+  const cos = Math.abs(Math.cos(rot)), sin = Math.abs(Math.sin(rot));
+  const needW = outW * cos + outH * sin;
+  const needH = outW * sin + outH * cos;
+  const s = Math.max(needW / source.width, needH / source.height) * zoom;
+  const slackX = Math.max(0, (source.width - needW / s) / 2);
+  const slackY = Math.max(0, (source.height - needH / s) / 2);
+  ctx.translate(outW / 2, outH / 2);
+  ctx.rotate(rot);
+  ctx.scale(s, s);
+  ctx.drawImage(
+    source,
+    -source.width / 2 + state.cropX * slackX,
+    -source.height / 2 + state.cropY * slackY
+  );
+  // Réinitialise la transformation : les passes suivantes (douceur,
+  // halation, grain) dessinent en coordonnées écran.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   return c;
 }
 
@@ -223,6 +241,10 @@ async function persistCurrent() {
       blur: state.blur,
       igSize: state.igSize,
       format: state.format,
+      zoom: state.zoom,
+      rot: state.rot,
+      cropX: state.cropX,
+      cropY: state.cropY,
       seed: state.seed,
     },
   }).catch(() => {});
@@ -262,6 +284,10 @@ function applySettings(s) {
   state.format = igOn ? 'ig-blanc' : 'polaroid';
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
+  setAdjust('zoom', s.zoom ?? 100);
+  setAdjust('rot', s.rot ?? 0);
+  state.cropX = s.cropX || 0;
+  state.cropY = s.cropY || 0;
 }
 
 /* ── Navigation ─────────────────────────────────────────── */
@@ -284,6 +310,10 @@ async function showEditor(source) {
   setAdjust('expo', 0);
   setAdjust('contrast', 0);
   setAdjust('blur', 0);
+  setAdjust('zoom', 100);
+  setAdjust('rot', 0);
+  state.cropX = 0;
+  state.cropY = 0;
   resetAdjustsForPreset();
   showNav('films');
   stopCamera();
@@ -608,8 +638,11 @@ $('btn-delete').addEventListener('click', async () => {
 
 /* ── Curseurs de réglage ── */
 
-const ADJUST_IDS = { expo: 'adj-expo', contrast: 'adj-contrast', sat: 'adj-sat', grain: 'adj-grain', blur: 'adj-blur' };
-const SIGNED = new Set(['expo', 'contrast']);
+const ADJUST_IDS = {
+  expo: 'adj-expo', contrast: 'adj-contrast', sat: 'adj-sat',
+  grain: 'adj-grain', blur: 'adj-blur', zoom: 'adj-zoom', rot: 'adj-rot',
+};
+const SIGNED = new Set(['expo', 'contrast', 'rot']);
 
 function setAdjust(key, value) {
   state[key] = value;
@@ -622,6 +655,7 @@ function setAdjust(key, value) {
 function adjustDefault(key) {
   if (key === 'sat') return Math.round(state.preset.sat * 100);
   if (key === 'grain') return Math.round(state.preset.grain * 250);
+  if (key === 'zoom') return 100;
   return 0;
 }
 
@@ -663,14 +697,16 @@ for (const nav of Object.keys(NAV_PANES)) {
 
 const CONTROL_ROWS = {
   expo: 'row-expo', contrast: 'row-contrast', sat: 'row-sat',
-  grain: 'row-grain', blur: 'row-blur', fond: 'row-fond',
+  grain: 'row-grain', blur: 'row-blur', fond: 'row-fond', crop: 'row-crop',
 };
 let ctlKey = null;
 let ctlPrev = null;
 
 function openControl(key) {
   ctlKey = key;
-  ctlPrev = key === 'fond' ? state.igSize : state[key];
+  if (key === 'fond') ctlPrev = state.igSize;
+  else if (key === 'crop') ctlPrev = { zoom: state.zoom, rot: state.rot, x: state.cropX, y: state.cropY };
+  else ctlPrev = state[key];
   for (const [k, row] of Object.entries(CONTROL_ROWS)) $(row).hidden = k !== key;
   $('drawer-reglages').hidden = true;
   $('drawer-control').hidden = false;
@@ -678,8 +714,16 @@ function openControl(key) {
 
 function closeControl(apply) {
   if (!apply && ctlKey) {
-    if (ctlKey === 'fond') setIgSize(ctlPrev);
-    else setAdjust(ctlKey, ctlPrev);
+    if (ctlKey === 'fond') {
+      setIgSize(ctlPrev);
+    } else if (ctlKey === 'crop') {
+      setAdjust('zoom', ctlPrev.zoom);
+      setAdjust('rot', ctlPrev.rot);
+      state.cropX = ctlPrev.x;
+      state.cropY = ctlPrev.y;
+    } else {
+      setAdjust(ctlKey, ctlPrev);
+    }
   }
   ctlKey = null;
   render();
@@ -709,6 +753,30 @@ $('adj-size-val').addEventListener('click', () => {
   setIgSize(0);
   schedulePersist();
 });
+
+/* ── Recadrage : glisser sur l'aperçu déplace le cadrage ── */
+
+let panDrag = null;
+renderCanvas.addEventListener('pointerdown', (e) => {
+  if (ctlKey !== 'crop' || !state.source) return;
+  panDrag = { x: e.clientX, y: e.clientY, cx: state.cropX, cy: state.cropY };
+  renderCanvas.setPointerCapture(e.pointerId);
+});
+renderCanvas.addEventListener('pointermove', (e) => {
+  if (!panDrag) return;
+  const rect = renderCanvas.getBoundingClientRect();
+  const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+  state.cropX = clamp1(panDrag.cx - ((e.clientX - panDrag.x) / rect.width) * 2);
+  state.cropY = clamp1(panDrag.cy - ((e.clientY - panDrag.y) / rect.height) * 2);
+  render(true);
+});
+const endPan = () => {
+  if (!panDrag) return;
+  panDrag = null;
+  render();
+};
+renderCanvas.addEventListener('pointerup', endPan);
+renderCanvas.addEventListener('pointercancel', endPan);
 
 $('btn-download').addEventListener('click', download);
 

@@ -256,6 +256,7 @@ button {
   display: block;
   width: 100%;
   height: auto;
+  touch-action: none; /* glisser-déplacer du recadrage */
 }
 
 /* Développement : la fenêtre image émerge de la chimie */
