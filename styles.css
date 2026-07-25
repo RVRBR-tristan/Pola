@@ -655,12 +655,22 @@ button {
 .gallery-actions {
   flex: none;
   display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 10px 20px 6px;
 }
 .gallery-actions[hidden] { display: none; }
+.gallery-actions-row { display: flex; gap: 10px; }
 .btn-soft { background: var(--surface); color: var(--ink); }
 .btn-soft:active { background: var(--surface-2); }
+.btn-export {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(255, 135, 44, 0.35);
+}
+.btn-export:active { background: var(--brand-press); }
+.btn-export:disabled { opacity: 0.4; box-shadow: none; }
+.btn-export.is-done { background: oklch(0.62 0.14 150); box-shadow: none; }
 .btn-danger {
   background: oklch(0.55 0.19 27);
   color: #fff;

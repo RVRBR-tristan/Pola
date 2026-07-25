@@ -170,7 +170,7 @@ function sourceFromImage(imgEl) {
 
 // Recadrage centré de la source au ratio de l'ouverture du cadre.
 // `sf` < 1 : version réduite pour l'aperçu rapide pendant un glissement.
-function cropToOpening(source, frame, sf = 1) {
+function cropToOpening(source, frame, sf = 1, st = state) {
   const { w, h } = frame.img;
   const outW = Math.round(w * frame.scale * sf), outH = Math.round(h * frame.scale * sf);
   const c = document.createElement('canvas');
@@ -180,8 +180,8 @@ function cropToOpening(source, frame, sf = 1) {
   ctx.imageSmoothingQuality = 'high';
   // Recadrage : zoom, redressement et déplacement. L'échelle de base
   // couvre la fenêtre même une fois pivotée (pas de coins vides).
-  const rot = (state.rot * Math.PI) / 180;
-  const zoom = state.zoom / 100;
+  const rot = (st.rot * Math.PI) / 180;
+  const zoom = st.zoom / 100;
   const cos = Math.abs(Math.cos(rot)), sin = Math.abs(Math.sin(rot));
   const needW = outW * cos + outH * sin;
   const needH = outW * sin + outH * cos;
@@ -193,8 +193,8 @@ function cropToOpening(source, frame, sf = 1) {
   ctx.scale(s, s);
   ctx.drawImage(
     source,
-    -source.width / 2 + state.cropX * slackX,
-    -source.height / 2 + state.cropY * slackY
+    -source.width / 2 + st.cropX * slackX,
+    -source.height / 2 + st.cropY * slackY
   );
   // Réinitialise la transformation : les passes suivantes (douceur,
   // halation, grain) dessinent en coordonnées écran.
@@ -202,13 +202,13 @@ function cropToOpening(source, frame, sf = 1) {
   return c;
 }
 
-function currentAdjust() {
+function currentAdjust(st = state) {
   return {
-    expo: (state.expo / 100) * 1.2,
-    contrast: (state.contrast / 100) * 0.75,
-    sat: state.sat / 100,
-    grain: state.grain / 250,
-    blur: state.blur / 100,
+    expo: (st.expo / 100) * 1.2,
+    contrast: (st.contrast / 100) * 0.75,
+    sat: st.sat / 100,
+    grain: st.grain / 250,
+    blur: st.blur / 100,
   };
 }
 
@@ -491,20 +491,27 @@ function toBlob(canvas) {
   return new Promise((res) => canvas.toBlob(res, 'image/png'));
 }
 
-function stamp() {
-  const d = new Date();
+function stampDate(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
-async function download() {
-  const blob = await toBlob(exportCanvas());
+function stamp() {
+  return stampDate(new Date());
+}
+
+function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `pola-${stamp()}.png`;
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function download() {
+  const blob = await toBlob(exportCanvas());
+  downloadBlob(blob, `pola-${stamp()}.png`);
   const btn = $('btn-download');
   btn.classList.add('is-done');
   setTimeout(() => btn.classList.remove('is-done'), 1200);
@@ -667,10 +674,15 @@ function toggleSelected(id, el) {
 }
 
 function syncDeleteButton() {
-  const btn = $('btn-delete');
-  btn.disabled = gallerySel.size === 0;
-  btn.classList.remove('is-armed');
-  btn.textContent = gallerySel.size > 0 ? `Supprimer (${gallerySel.size})` : 'Supprimer';
+  const del = $('btn-delete');
+  del.disabled = gallerySel.size === 0;
+  del.classList.remove('is-armed');
+  del.textContent = gallerySel.size > 0 ? `Supprimer (${gallerySel.size})` : 'Supprimer';
+  const exp = $('btn-export');
+  if (!exportBusy) {
+    exp.disabled = gallerySel.size === 0;
+    exp.textContent = gallerySel.size > 0 ? `Exporter (${gallerySel.size})` : 'Exporter';
+  }
   const all = document.querySelectorAll('.g-item').length;
   $('btn-select-all').textContent =
     gallerySel.size === all && all > 0 ? 'Tout désélectionner' : 'Tout sélectionner';
@@ -682,6 +694,8 @@ function exitSelection() {
   $('gallery-grid').classList.remove('is-selecting');
   $('gallery-actions').hidden = true;
   $('btn-select').textContent = 'Sélectionner';
+  const exp = $('btn-export');
+  exp.classList.remove('is-done');
   document.querySelectorAll('.g-item.is-selected').forEach((el) => el.classList.remove('is-selected'));
 }
 
@@ -731,6 +745,176 @@ $('btn-delete').addEventListener('click', async () => {
   exitSelection();
   await refreshGallery();
 });
+
+/* ── Export de masse ────────────────────────────────────── */
+
+// Rendu plein format d'une entrée conservée, sans toucher à l'éditeur :
+// tout passe par des canvas locaux et un état dérivé des réglages stockés.
+function stateFromSettings(s = {}) {
+  const preset = PRESETS.find((p) => p.id === s.presetId) || PRESETS[0];
+  const igOn = s.format && s.format !== 'polaroid';
+  return {
+    preset,
+    frame: FRAMES.find((f) => f.id === s.frameId) || FRAMES[0],
+    seed: s.seed || 1,
+    expo: s.expo || 0,
+    contrast: s.contrast || 0,
+    sat: s.sat ?? Math.round(preset.sat * 100),
+    grain: s.grain ?? Math.round(preset.grain * 250),
+    blur: s.blur || 0,
+    leak: s.leak ?? 0,
+    leakSeed: s.leakSeed ?? 1,
+    zoom: s.zoom ?? 100,
+    rot: s.rot ?? 0,
+    cropX: s.cropX || 0,
+    cropY: s.cropY || 0,
+    format: igOn ? s.format : 'polaroid',
+    igSize: igOn ? (s.igSize ?? 80) : 0,
+  };
+}
+
+function blobToCanvas(blob) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      res(c);
+    };
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
+async function renderShotCanvas(shot) {
+  await assetsReady;
+  const st = stateFromSettings(shot.settings);
+  const source = await blobToCanvas(shot.source);
+  const photo = cropToOpening(source, st.frame, 1, st);
+  applyPreset(photo, st.preset, st.seed, currentAdjust(st));
+  if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
+  const pc = document.createElement('canvas');
+  renderPolaroid(pc, st.frame, photo);
+  return st.format === 'polaroid' ? pc : renderInstagram(pc, false, { size: st.igSize });
+}
+
+// ── Archive ZIP minimale (méthode « store », sans compression) ──
+// Les PNG sont déjà compressés ; une archive sans déflation reste
+// compacte et n'exige aucune dépendance.
+function crc32(bytes) {
+  let c = ~0;
+  for (let i = 0; i < bytes.length; i++) {
+    c ^= bytes[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+
+function buildZip(files) {
+  const enc = new TextEncoder();
+  const u16 = (n) => [n & 0xff, (n >>> 8) & 0xff];
+  const u32 = (n) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff];
+  const parts = [];
+  const central = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const crc = crc32(f.bytes);
+    const size = f.bytes.length;
+    const local = new Uint8Array([
+      ...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0),
+      ...u16(0), ...u16(0), ...u32(crc), ...u32(size), ...u32(size),
+      ...u16(name.length), ...u16(0),
+    ]);
+    parts.push(local, name, f.bytes);
+    central.push({ name, crc, size, offset });
+    offset += local.length + name.length + size;
+  }
+
+  let centralSize = 0;
+  for (const c of central) {
+    const header = new Uint8Array([
+      ...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0),
+      ...u16(0), ...u16(0), ...u32(c.crc), ...u32(c.size), ...u32(c.size),
+      ...u16(c.name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(0), ...u32(c.offset),
+    ]);
+    parts.push(header, c.name);
+    centralSize += header.length + c.name.length;
+  }
+
+  parts.push(new Uint8Array([
+    ...u32(0x06054b50), ...u16(0), ...u16(0),
+    ...u16(central.length), ...u16(central.length),
+    ...u32(centralSize), ...u32(offset), ...u16(0),
+  ]));
+
+  return new Blob(parts, { type: 'application/zip' });
+}
+
+// Livraison : partage natif (idéal sur mobile pour enregistrer dans
+// Photos), sinon téléchargement direct (1 fichier) ou archive ZIP.
+async function deliverExport(items) {
+  const files = items.map((it) => new File([it.blob], it.name, { type: 'image/png' }));
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
+      await navigator.share({ files, title: 'Polas' });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // annulé par l'utilisateur
+      // autre erreur : on retombe sur le téléchargement
+    }
+  }
+  if (items.length === 1) {
+    downloadBlob(items[0].blob, items[0].name);
+    return;
+  }
+  const zipFiles = [];
+  for (const it of items) {
+    zipFiles.push({ name: it.name, bytes: new Uint8Array(await it.blob.arrayBuffer()) });
+  }
+  downloadBlob(buildZip(zipFiles), `polas-${stamp()}.zip`);
+}
+
+let exportBusy = false;
+async function exportSelected() {
+  if (exportBusy || gallerySel.size === 0) return;
+  const ids = [...gallerySel];
+  const btn = $('btn-export');
+  exportBusy = true;
+  btn.disabled = true;
+  btn.classList.remove('is-done');
+  try {
+    const shots = [];
+    for (const id of ids) {
+      const s = await getShot(id).catch(() => null);
+      if (s) shots.push(s);
+    }
+    shots.sort((a, b) => b.createdAt - a.createdAt);
+    const items = [];
+    for (let i = 0; i < shots.length; i++) {
+      btn.textContent = `Export… ${i + 1}/${shots.length}`;
+      const canvas = await renderShotCanvas(shots[i]);
+      const blob = await toBlob(canvas);
+      items.push({ name: `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}.png`, blob });
+      await new Promise((r) => setTimeout(r, 0)); // laisse l'UI respirer
+    }
+    if (items.length) await deliverExport(items);
+    btn.textContent = 'Exporté';
+    btn.classList.add('is-done');
+    setTimeout(() => { exportBusy = false; btn.classList.remove('is-done'); syncDeleteButton(); }, 1400);
+  } catch (e) {
+    btn.textContent = 'Échec de l’export';
+    setTimeout(() => { exportBusy = false; syncDeleteButton(); }, 1800);
+  }
+}
+
+$('btn-export').addEventListener('click', exportSelected);
 
 /* ── Curseurs de réglage ── */
 
