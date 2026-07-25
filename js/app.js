@@ -790,6 +790,10 @@ function blobToCanvas(blob) {
   });
 }
 
+// Rend les deux sorties d'un tirage conservé :
+//  - `framed` : le polaroid complet (cadre + format polaroid ou 4:5) ;
+//  - `photo`  : la photo seule, recadrée et filtrée (film + réglages +
+//    light leak) mais SANS cadre — l'« original » filtré, avant compositing.
 async function renderShotCanvas(shot) {
   await assetsReady;
   const st = stateFromSettings(shot.settings);
@@ -799,7 +803,8 @@ async function renderShotCanvas(shot) {
   if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
   const pc = document.createElement('canvas');
   renderPolaroid(pc, st.frame, photo);
-  return st.format === 'polaroid' ? pc : renderInstagram(pc, false, { size: st.igSize });
+  const framed = st.format === 'polaroid' ? pc : renderInstagram(pc, false, { size: st.igSize });
+  return { framed, photo };
 }
 
 // Chaque photo est téléchargée individuellement dans le dossier
@@ -827,10 +832,13 @@ async function exportSelected() {
     shots.sort((a, b) => b.createdAt - a.createdAt);
     for (let i = 0; i < shots.length; i++) {
       btn.textContent = `Enregistrement… ${i + 1}/${shots.length}`;
-      const canvas = await renderShotCanvas(shots[i]);
-      const blob = await toBlob(canvas);
-      const name = `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}.png`;
-      downloadBlob(blob, name);
+      const { framed, photo } = await renderShotCanvas(shots[i]);
+      const base = `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}`;
+      // Deux fichiers par tirage : le polaroid encadré et la photo seule
+      // (filtrée, sans cadre) pour conserver l'original.
+      downloadBlob(await toBlob(framed), `${base}.png`);
+      await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
+      downloadBlob(await toBlob(photo), `${base}-sans-cadre.png`);
       if (i < shots.length - 1) await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
     }
     btn.textContent = shots.length > 1 ? `Enregistrées (${shots.length})` : 'Enregistrée';
