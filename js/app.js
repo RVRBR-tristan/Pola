@@ -18,6 +18,8 @@ const state = {
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
+  igBg: null,    // fond 4:5 en collage : canvas décodé (mémoire)
+  igBgBlob: null, // même fond, blob JPEG persisté dans la galerie
   leak: 0,       // light leak : 0 = désactivé, 1..100 = intensité
   leakSeed: 1,
   zoom: 100,     // recadrage : 100..300 %
@@ -247,7 +249,7 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, false, { size: state.igSize });
+    const out = renderInstagram(polaroidCanvas, false, { size: state.igSize, bg: state.igBg });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -256,7 +258,16 @@ function updateDisplay() {
     '--out-ratio',
     (renderCanvas.width / renderCanvas.height).toFixed(4)
   );
+  syncIgBgControls();
   positionDevOverlay();
+}
+
+// Le « + » d'ajout de fond n'apparaît qu'en mode 4:5 ; le « × » de retrait
+// seulement quand une photo de fond est posée.
+function syncIgBgControls() {
+  const on = state.format !== 'polaroid';
+  $('ig-bg-controls').hidden = !on;
+  $('ig-bg-remove').hidden = !state.igBg;
 }
 
 // L'overlay de développement couvre exactement l'ouverture image
@@ -309,6 +320,7 @@ async function persistCurrent() {
       leak: state.leak,
       leakSeed: state.leakSeed,
       igSize: state.igSize,
+      igBg: state.igBgBlob || null,
       format: state.format,
       zoom: state.zoom,
       rot: state.rot,
@@ -353,6 +365,15 @@ function applySettings(s) {
   state.format = igOn ? 'ig-blanc' : 'polaroid';
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
+  // Fond 4:5 en collage : on garde le blob, on décode l'image en arrière-plan.
+  state.igBgBlob = s.igBg || null;
+  state.igBg = null;
+  if (state.igBgBlob) {
+    const blob = state.igBgBlob;
+    blobToCanvas(blob).then((c) => {
+      if (state.igBgBlob === blob) { state.igBg = c; render(); }
+    }).catch(() => {});
+  }
   setAdjust('leak', s.leak ?? 0);
   state.leakSeed = s.leakSeed ?? state.leakSeed;
   setAdjust('zoom', s.zoom ?? 100);
@@ -387,6 +408,8 @@ async function showEditor(source) {
   setAdjust('rot', 0);
   state.cropX = 0;
   state.cropY = 0;
+  state.igBg = null;
+  state.igBgBlob = null;
   resetAdjustsForPreset();
   showNav('films');
   stopCamera();
@@ -484,7 +507,7 @@ function updateLiveFrame() {
 
 function exportCanvas() {
   if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, false, { size: state.igSize });
+  return renderInstagram(polaroidCanvas, false, { size: state.igSize, bg: state.igBg });
 }
 
 function toBlob(canvas) {
@@ -770,6 +793,7 @@ function stateFromSettings(s = {}) {
     cropY: s.cropY || 0,
     format: igOn ? s.format : 'polaroid',
     igSize: igOn ? (s.igSize ?? 80) : 0,
+    igBgBlob: igOn ? (s.igBg || null) : null,
   };
 }
 
@@ -803,7 +827,11 @@ async function renderShotCanvas(shot) {
   if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
   const pc = document.createElement('canvas');
   renderPolaroid(pc, st.frame, photo);
-  const framed = st.format === 'polaroid' ? pc : renderInstagram(pc, false, { size: st.igSize });
+  let framed = pc;
+  if (st.format !== 'polaroid') {
+    const bg = st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null;
+    framed = renderInstagram(pc, false, { size: st.igSize, bg });
+  }
   return { framed, photo };
 }
 
@@ -968,6 +996,53 @@ $('adj-size').addEventListener('input', (e) => setIgSize(Number(e.target.value))
 $('adj-size').addEventListener('change', () => schedulePersist());
 $('adj-size-val').addEventListener('click', () => {
   setIgSize(0);
+  schedulePersist();
+});
+
+/* ── Fond 4:5 en collage : photo derrière le polaroid ── */
+
+// Décode le fichier choisi et le ré-encode en JPEG, plafonné à 2160 px
+// sur le grand côté (résolution du cadre 4:5) pour garder la galerie légère.
+function prepareBg(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 2160 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob((blob) => res({ canvas: c, blob }), 'image/jpeg', 0.85);
+    };
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
+    img.src = url;
+  });
+}
+
+$('ig-bg-add').addEventListener('click', () => $('ig-bg-input').click());
+$('ig-bg-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const { canvas, blob } = await prepareBg(file);
+    state.igBg = canvas;
+    state.igBgBlob = blob;
+    // Ajouter un fond n'a de sens qu'en 4:5 : on l'active si besoin.
+    if (state.format === 'polaroid') setIgSize(state.igSize > 0 ? state.igSize : 80);
+    else updateDisplay();
+    schedulePersist();
+  } catch { /* image illisible : on ignore */ }
+});
+
+$('ig-bg-remove').addEventListener('click', () => {
+  state.igBg = null;
+  state.igBgBlob = null;
+  if (state.source) updateDisplay();
   schedulePersist();
 });
 
