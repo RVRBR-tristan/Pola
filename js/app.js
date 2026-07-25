@@ -802,84 +802,13 @@ async function renderShotCanvas(shot) {
   return st.format === 'polaroid' ? pc : renderInstagram(pc, false, { size: st.igSize });
 }
 
-// ── Archive ZIP minimale (méthode « store », sans compression) ──
-// Les PNG sont déjà compressés ; une archive sans déflation reste
-// compacte et n'exige aucune dépendance.
-function crc32(bytes) {
-  let c = ~0;
-  for (let i = 0; i < bytes.length; i++) {
-    c ^= bytes[i];
-    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
-  }
-  return ~c >>> 0;
-}
-
-function buildZip(files) {
-  const enc = new TextEncoder();
-  const u16 = (n) => [n & 0xff, (n >>> 8) & 0xff];
-  const u32 = (n) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff];
-  const parts = [];
-  const central = [];
-  let offset = 0;
-
-  for (const f of files) {
-    const name = enc.encode(f.name);
-    const crc = crc32(f.bytes);
-    const size = f.bytes.length;
-    const local = new Uint8Array([
-      ...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0),
-      ...u16(0), ...u16(0), ...u32(crc), ...u32(size), ...u32(size),
-      ...u16(name.length), ...u16(0),
-    ]);
-    parts.push(local, name, f.bytes);
-    central.push({ name, crc, size, offset });
-    offset += local.length + name.length + size;
-  }
-
-  let centralSize = 0;
-  for (const c of central) {
-    const header = new Uint8Array([
-      ...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0),
-      ...u16(0), ...u16(0), ...u32(c.crc), ...u32(c.size), ...u32(c.size),
-      ...u16(c.name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
-      ...u32(0), ...u32(c.offset),
-    ]);
-    parts.push(header, c.name);
-    centralSize += header.length + c.name.length;
-  }
-
-  parts.push(new Uint8Array([
-    ...u32(0x06054b50), ...u16(0), ...u16(0),
-    ...u16(central.length), ...u16(central.length),
-    ...u32(centralSize), ...u32(offset), ...u16(0),
-  ]));
-
-  return new Blob(parts, { type: 'application/zip' });
-}
-
-// Livraison : partage natif (idéal sur mobile pour enregistrer dans
-// Photos), sinon téléchargement direct (1 fichier) ou archive ZIP.
-async function deliverExport(items) {
-  const files = items.map((it) => new File([it.blob], it.name, { type: 'image/png' }));
-  if (navigator.canShare && navigator.canShare({ files })) {
-    try {
-      await navigator.share({ files, title: 'Polas' });
-      return;
-    } catch (e) {
-      if (e && e.name === 'AbortError') return; // annulé par l'utilisateur
-      // autre erreur : on retombe sur le téléchargement
-    }
-  }
-  if (items.length === 1) {
-    downloadBlob(items[0].blob, items[0].name);
-    return;
-  }
-  const zipFiles = [];
-  for (const it of items) {
-    zipFiles.push({ name: it.name, bytes: new Uint8Array(await it.blob.arrayBuffer()) });
-  }
-  downloadBlob(buildZip(zipFiles), `polas-${stamp()}.zip`);
-}
+// Chaque photo est téléchargée individuellement dans le dossier
+// Téléchargements de l'appareil : elle est alors reprise automatiquement
+// par la sauvegarde Google Photos (dossiers d'appareil). Les déclenchements
+// sont espacés car certains navigateurs mobiles ignorent des
+// téléchargements trop rapprochés — et demandent une seule fois
+// l'autorisation de télécharger plusieurs fichiers.
+const EXPORT_GAP_MS = 700;
 
 let exportBusy = false;
 async function exportSelected() {
@@ -896,18 +825,17 @@ async function exportSelected() {
       if (s) shots.push(s);
     }
     shots.sort((a, b) => b.createdAt - a.createdAt);
-    const items = [];
     for (let i = 0; i < shots.length; i++) {
-      btn.textContent = `Export… ${i + 1}/${shots.length}`;
+      btn.textContent = `Enregistrement… ${i + 1}/${shots.length}`;
       const canvas = await renderShotCanvas(shots[i]);
       const blob = await toBlob(canvas);
-      items.push({ name: `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}.png`, blob });
-      await new Promise((r) => setTimeout(r, 0)); // laisse l'UI respirer
+      const name = `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}.png`;
+      downloadBlob(blob, name);
+      if (i < shots.length - 1) await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
     }
-    if (items.length) await deliverExport(items);
-    btn.textContent = 'Exporté';
+    btn.textContent = shots.length > 1 ? `Enregistrées (${shots.length})` : 'Enregistrée';
     btn.classList.add('is-done');
-    setTimeout(() => { exportBusy = false; btn.classList.remove('is-done'); syncDeleteButton(); }, 1400);
+    setTimeout(() => { exportBusy = false; btn.classList.remove('is-done'); syncDeleteButton(); }, 1600);
   } catch (e) {
     btn.textContent = 'Échec de l’export';
     setTimeout(() => { exportBusy = false; syncDeleteButton(); }, 1800);
