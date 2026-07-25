@@ -154,6 +154,7 @@ export function renderPolaroid(target, frame, photo) {
 
 // Export Instagram 4:5 : polaroid droit, centré, fond blanc ou noir.
 // `opts.size` (40–100) : taille homogène du tirage dans le canevas.
+// `opts.bg` (canvas/image) : photo de fond en collage, recadrée « cover ».
 export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   const W = 2160, H = 2700;
   const out = document.createElement('canvas');
@@ -162,6 +163,15 @@ export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   const ctx = out.getContext('2d');
   ctx.fillStyle = dark ? '#0c0c0d' : '#ffffff';
   ctx.fillRect(0, 0, W, H);
+
+  // Fond collage : la photo couvre tout le cadre 4:5 sans déformation.
+  const bg = opts.bg;
+  if (bg && bg.width && bg.height) {
+    const cover = Math.max(W / bg.width, H / bg.height);
+    const bw = bg.width * cover, bh = bg.height * cover;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bg, (W - bw) / 2, (H - bh) / 2, bw, bh);
+  }
 
   const size = (opts.size ?? 80) / 100;
   const fit = Math.min((W * 0.94) / polaroidCanvas.width, (H * 0.94) / polaroidCanvas.height);

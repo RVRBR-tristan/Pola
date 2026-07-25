@@ -10,7 +10,8 @@ PWA appareil photo : capture ou importe une image, place-la dans un cadre Polaro
 - **Réglages** : exposition (± 1,2 EV), contraste, saturation, grain et flou gaussien — repliés dans le pipeline film, aperçu rapide basse résolution pendant le glissement, rendu plein au relâchement. Saturation et grain s'initialisent sur le film choisi. Onglets Réglages / Fond 4:5.
 - **Flash** : torche matérielle quand disponible (Android), sinon flash d'écran (plein blanc pendant la capture).
 - **Animation de développement** après le déclenchement (respecte `prefers-reduced-motion`).
-- **Export** : PNG haute résolution (polaroid seul) ou 2160 × 2700 (4:5), téléchargement direct.
+- **Fond 4:5 en collage** : en mode 4:5, un bouton **+** dans le coin supérieur droit de l'aperçu ajoute une photo de fond (recadrée « cover ») derrière le polaroid ; le **×** la retire. Le fond est conservé avec le tirage dans la galerie et restitué à l'export.
+- **Export** : PNG haute résolution (polaroid seul) ou 2160 × 2700 (4:5, fond blanc ou photo de collage), téléchargement direct.
 - **Galerie** : chaque photo est conservée localement (IndexedDB) avec sa source pleine résolution et ses réglages — rééditable à tout moment ; sélection unitaire ou de masse, suppression avec confirmation, et export de masse qui re-rend chaque tirage en pleine résolution selon ses propres réglages (film, cadre, recadrage, light leak, format polaroid ou 4:5) puis le télécharge **individuellement** dans le dossier Téléchargements de l'appareil — repris automatiquement par la sauvegarde Google Photos. Deux fichiers par photo : le polaroid encadré et la photo seule filtrée (sans cadre, suffixe `-sans-cadre`) pour conserver l'original.
 - **PWA** : installable, hors-ligne (service worker), plein écran.
 

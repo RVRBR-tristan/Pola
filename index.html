@@ -78,8 +78,17 @@
       <div class="polaroid-out" id="polaroid-out">
         <canvas id="render-canvas"></canvas>
         <div class="dev-overlay" id="dev-overlay" hidden></div>
+        <div class="ig-bg-controls" id="ig-bg-controls" hidden>
+          <button class="ig-bg-btn ig-bg-remove" id="ig-bg-remove" aria-label="Retirer le fond" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+          </button>
+          <button class="ig-bg-btn ig-bg-add" id="ig-bg-add" aria-label="Ajouter une photo de fond">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
+    <input type="file" id="ig-bg-input" accept="image/*" hidden>
 
     <div class="drawer">
       <div class="chip-row drawer-pane" id="edit-film-strip" role="radiogroup" aria-label="Film"></div>

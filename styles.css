@@ -282,6 +282,37 @@ button {
   touch-action: none; /* glisser-déplacer du recadrage */
 }
 
+/* Fond 4:5 en collage : commandes flottantes dans le coin supérieur droit */
+.ig-bg-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: var(--z-overlay);
+  display: flex;
+  gap: 8px;
+}
+.ig-bg-controls[hidden] { display: none; }
+.ig-bg-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(20, 16, 10, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms ease-out, background 150ms ease-out;
+}
+.ig-bg-btn svg { width: 22px; height: 22px; fill: currentColor; }
+.ig-bg-btn:active { transform: scale(0.9); }
+.ig-bg-btn[hidden] { display: none; }
+.ig-bg-add { background: var(--brand); }
+.ig-bg-add:active { background: var(--brand-press); }
+.ig-bg-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
 /* Développement : la fenêtre image émerge de la chimie */
 .dev-overlay {
   position: absolute;
