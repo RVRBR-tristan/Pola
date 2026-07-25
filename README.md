@@ -11,7 +11,7 @@ PWA appareil photo : capture ou importe une image, place-la dans un cadre Polaro
 - **Flash** : torche matérielle quand disponible (Android), sinon flash d'écran (plein blanc pendant la capture).
 - **Animation de développement** après le déclenchement (respecte `prefers-reduced-motion`).
 - **Export** : PNG haute résolution (polaroid seul) ou 2160 × 2700 (4:5), téléchargement direct.
-- **Galerie** : chaque photo est conservée localement (IndexedDB) avec sa source pleine résolution et ses réglages — rééditable à tout moment ; sélection unitaire ou de masse, suppression avec confirmation.
+- **Galerie** : chaque photo est conservée localement (IndexedDB) avec sa source pleine résolution et ses réglages — rééditable à tout moment ; sélection unitaire ou de masse, suppression avec confirmation, et export de masse (partage natif sur mobile, sinon PNG unique ou archive ZIP sans dépendance) qui re-rend chaque tirage en pleine résolution selon ses propres réglages.
 - **PWA** : installable, hors-ligne (service worker), plein écran.
 
 ## Stack
