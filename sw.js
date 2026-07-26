@@ -11,7 +11,6 @@ const SHELL = [
   'assets/pola-logo.svg',
   'assets/frame-600.png',
   'assets/frame-instax2.png',
-  'assets/frame-instax-blanc.png',
   'assets/frame-instax-creme.png',
   'assets/frame-froisse.png',
   'assets/frame-patine.png',

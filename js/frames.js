@@ -24,15 +24,6 @@ export const FRAMES = [
     paper: '#f8f8f8',
   },
   {
-    id: 'instax-blanc',
-    name: 'Instax Blanc',
-    W: 937, H: 1499,
-    img: { x: 68, y: 137, w: 798, h: 1079 },
-    scale: 1.5,
-    overlay: 'assets/frame-instax-blanc.png',
-    paper: '#fbfbfb',
-  },
-  {
     id: 'instax-creme',
     name: 'Instax Crème',
     W: 806, H: 1250,
