@@ -29,7 +29,7 @@ export const FRAMES = [
     W: 804, H: 1250,
     img: { x: 55, y: 106, w: 694, h: 917 },
     scale: 1.6,
-    overlay: 'assets/frame-instax-creme.png',
+    overlay: 'assets/frame-instax-creme-2.png',
     paper: '#f4ecd8',
   },
   {
@@ -65,7 +65,7 @@ export const FRAMES = [
     W: 1022, H: 1240,
     img: { x: 55, y: 82, w: 903, h: 911 },
     scale: 1.5,
-    overlay: 'assets/frame-froisse.png',
+    overlay: 'assets/frame-froisse-2.png',
     paper: '#f7f7f7',
   },
   {
@@ -74,7 +74,7 @@ export const FRAMES = [
     W: 1056, H: 1275,
     img: { x: 65, y: 71, w: 922, h: 944 },
     scale: 1.5,
-    overlay: 'assets/frame-patine.png',
+    overlay: 'assets/frame-patine-2.png',
     paper: '#f2f1ee',
   },
   {
@@ -83,7 +83,7 @@ export const FRAMES = [
     W: 1167, H: 1402,
     img: { x: 43, y: 88, w: 1077, h: 1025 },
     scale: 1.4,
-    overlay: 'assets/frame-dechire.png',
+    overlay: 'assets/frame-dechire-2.png',
     paper: '#f6f3ef',
   },
   {
@@ -92,7 +92,7 @@ export const FRAMES = [
     W: 1021, H: 1439,
     img: { x: 88, y: 101, w: 838, h: 1233 },
     scale: 1.4,
-    overlay: 'assets/frame-papier.png',
+    overlay: 'assets/frame-papier-2.png',
     paper: '#f3efe6',
   },
   {
@@ -174,7 +174,7 @@ export function renderPolaroid(target, frame, photo) {
     // La photo est glissée sous le scan (légèrement débordante pour
     // passer sous les bords doux de la découpe), le cadre par-dessus.
     ctx.clearRect(0, 0, W, H);
-    const pad = 5 * s;
+    const pad = 8 * s;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(photo, ix - pad, iy - pad, iw + pad * 2, ih + pad * 2);
     ctx.drawImage(textures[frame.id], 0, 0, W, H);
