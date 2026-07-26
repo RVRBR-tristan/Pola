@@ -19,6 +19,7 @@ const SHELL = [
   'assets/frame-instax-brut.png',
   'assets/frame-creme.png',
   'assets/frame-perfore.png',
+  'assets/frame-widev.png',
   'assets/frame-wide.png',
   'assets/frame-rouge.png',
   'assets/frame-120.png',

@@ -96,6 +96,15 @@ export const FRAMES = [
     paper: '#f3efe6',
   },
   {
+    id: 'widev',
+    name: 'Wide Vertical',
+    W: 1008, H: 1275,
+    img: { x: 187, y: 59, w: 739, h: 1176 },
+    scale: 1.5,
+    overlay: 'assets/frame-widev.png',
+    paper: '#fafafa',
+  },
+  {
     id: 'wide',
     name: 'Instax Wide',
     W: 905, H: 711,
