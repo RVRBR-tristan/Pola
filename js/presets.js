@@ -108,6 +108,42 @@ export const PRESETS = [
     vignette: 0.18,
   },
   {
+    // Ektachrome : la diapo froide et propre — bleus affirmés, rendu
+    // net et fidèle, contraste de film inversible, grain très fin.
+    id: 'ekta',
+    name: 'Ektachrome',
+    css: 'saturate(1.02) contrast(1.1) brightness(1.01)',
+    lift: { r: 0.015, g: 0.015, b: 0.028 },
+    white: { r: 0.955, g: 0.975, b: 1.0 },
+    gamma: { r: 1.04, g: 1.0, b: 0.95 },
+    contrast: 0.28,
+    sat: 0.98,
+    splitShadow: [0, 2, 8],
+    splitHigh: [2, 2, 4],
+    bloom: 0.08,
+    grain: 0.04,
+    vignette: 0.16,
+  },
+  {
+    // Kodachrome : la légende — rouges riches, noirs profonds, palette
+    // chaude et retenue (« more poetry, a softness », dixit McCurry),
+    // bleus assourdis, grain fin.
+    id: 'kodach',
+    name: 'Kodachrome',
+    css: 'saturate(1.08) contrast(1.15) sepia(0.08) brightness(0.98)',
+    lift: { r: 0.012, g: 0.01, b: 0.008 },
+    white: { r: 0.985, g: 0.96, b: 0.92 },
+    gamma: { r: 0.97, g: 1.0, b: 1.07 },
+    contrast: 0.34,
+    sat: 1.05,
+    splitShadow: [2, 0, -2],
+    splitHigh: [10, 3, -6],
+    blueMute: 0.15,
+    bloom: 0.08,
+    grain: 0.05,
+    vignette: 0.18,
+  },
+  {
     // 667 N&B : contraste fort, ombres profondes et nettes,
     // blancs ivoire (jamais stériles), grain visible.
     id: 'nb',

@@ -149,6 +149,24 @@ export const FRAMES = [
     overlay: 'assets/frame-negatif.png',
     paper: '#101010',
   },
+  {
+    id: 'ekta',
+    name: 'Diapo Ekta',
+    W: 1400, H: 1400,
+    img: { x: 218, y: 380, w: 963, h: 647 },
+    scale: 1.3,
+    overlay: 'assets/frame-ekta.png',
+    paper: '#f2ecd8',
+  },
+  {
+    id: 'kodach',
+    name: 'Diapo Kodak',
+    W: 1400, H: 1400,
+    img: { x: 222, y: 367, w: 962, h: 655 },
+    scale: 1.3,
+    overlay: 'assets/frame-kodach.png',
+    paper: '#f4f2ea',
+  },
 ];
 
 /* ── Chargement des scans ── */

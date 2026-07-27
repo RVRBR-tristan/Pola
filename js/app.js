@@ -18,6 +18,7 @@ const state = {
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
+  igDark: false, // fond 4:5 : blanc ou noir
   igBg: null,    // fond 4:5 en collage : canvas décodé (mémoire)
   igBgBlob: null, // même fond, blob JPEG persisté dans la galerie
   leak: 0,       // light leak : 0 = désactivé, 1..100 = intensité
@@ -249,7 +250,7 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, false, { size: state.igSize, bg: state.igBg });
+    const out = renderInstagram(polaroidCanvas, state.igDark, { size: state.igSize, bg: state.igBg });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -320,6 +321,7 @@ async function persistCurrent() {
       leak: state.leak,
       leakSeed: state.leakSeed,
       igSize: state.igSize,
+      igDark: state.igDark,
       igBg: state.igBgBlob || null,
       format: state.format,
       zoom: state.zoom,
@@ -361,8 +363,13 @@ function applySettings(s) {
   setAdjust('blur', s.blur || 0);
   state.igSize = s.igSize ?? 80;
   const igOn = s.format && s.format !== 'polaroid';
+  state.igDark = !!s.igDark || s.format === 'ig-noir';
   state.igSize = igOn ? (s.igSize ?? 80) : 0;
-  state.format = igOn ? 'ig-blanc' : 'polaroid';
+  state.format = igOn ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
+  $('sw-blanc').classList.toggle('is-on', !state.igDark);
+  $('sw-blanc').setAttribute('aria-checked', String(!state.igDark));
+  $('sw-noir').classList.toggle('is-on', state.igDark);
+  $('sw-noir').setAttribute('aria-checked', String(state.igDark));
   $('adj-size').value = state.igSize;
   $('adj-size-val').textContent = String(state.igSize);
   // Fond 4:5 en collage : on garde le blob, on décode l'image en arrière-plan.
@@ -507,7 +514,7 @@ function updateLiveFrame() {
 
 function exportCanvas() {
   if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, false, { size: state.igSize, bg: state.igBg });
+  return renderInstagram(polaroidCanvas, state.igDark, { size: state.igSize, bg: state.igBg });
 }
 
 function toBlob(canvas) {
@@ -830,7 +837,7 @@ async function renderShotCanvas(shot) {
   let framed = pc;
   if (st.format !== 'polaroid') {
     const bg = st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null;
-    framed = renderInstagram(pc, false, { size: st.igSize, bg });
+    framed = renderInstagram(pc, !!st.igDark, { size: st.igSize, bg });
   }
   return { framed, photo };
 }
@@ -986,13 +993,26 @@ $('ctl-cancel').addEventListener('click', () => closeControl(false));
 
 function setIgSize(v) {
   state.igSize = v;
-  state.format = v > 0 ? 'ig-blanc' : 'polaroid';
+  state.format = v > 0 ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
   $('adj-size').value = v;
   $('adj-size-val').textContent = String(v);
   if (state.source) updateDisplay();
 }
 
+function setIgDark(dark) {
+  state.igDark = dark;
+  if (state.format !== 'polaroid') state.format = dark ? 'ig-noir' : 'ig-blanc';
+  $('sw-blanc').classList.toggle('is-on', !dark);
+  $('sw-blanc').setAttribute('aria-checked', String(!dark));
+  $('sw-noir').classList.toggle('is-on', dark);
+  $('sw-noir').setAttribute('aria-checked', String(dark));
+  if (state.source) updateDisplay();
+  schedulePersist();
+}
+
 $('adj-size').addEventListener('input', (e) => setIgSize(Number(e.target.value)));
+$('sw-blanc').addEventListener('click', () => setIgDark(false));
+$('sw-noir').addEventListener('click', () => setIgDark(true));
 $('adj-size').addEventListener('change', () => schedulePersist());
 $('adj-size-val').addEventListener('click', () => {
   setIgSize(0);
