@@ -364,13 +364,13 @@ function applySettings(s) {
   state.igSize = s.igSize ?? 80;
   const igOn = s.format && s.format !== 'polaroid';
   state.igDark = !!s.igDark || s.format === 'ig-noir';
-  state.igSize = igOn ? (s.igSize ?? 80) : 0;
+  state.igSize = snapIgSize(igOn ? (s.igSize ?? 80) : 0);
   state.format = igOn ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
   $('sw-blanc').classList.toggle('is-on', !state.igDark);
   $('sw-blanc').setAttribute('aria-checked', String(!state.igDark));
   $('sw-noir').classList.toggle('is-on', state.igDark);
   $('sw-noir').setAttribute('aria-checked', String(state.igDark));
-  $('adj-size').value = state.igSize;
+  $('adj-size').value = IG_SIZES.indexOf(state.igSize);
   $('adj-size-val').textContent = String(state.igSize);
   // Fond 4:5 en collage : on garde le blob, on décode l'image en arrière-plan.
   state.igBgBlob = s.igBg || null;
@@ -989,12 +989,20 @@ document.querySelectorAll('#drawer-reglages .ric').forEach((b) => {
 $('ctl-ok').addEventListener('click', () => closeControl(true));
 $('ctl-cancel').addEventListener('click', () => closeControl(false));
 
-/* ── Fond 4:5 : un seul curseur — 0 = désactivé, au-delà = taille ── */
+/* ── Fond 4:5 : curseur à crans — 0 = désactivé, puis 5 tailles ── */
+
+const IG_SIZES = [0, 40, 50, 70, 80, 90];
+
+// Accroche une valeur libre (anciens tirages) au cran le plus proche.
+function snapIgSize(v) {
+  return IG_SIZES.reduce((best, s) => (Math.abs(s - v) < Math.abs(best - v) ? s : best), 0);
+}
 
 function setIgSize(v) {
+  v = snapIgSize(v);
   state.igSize = v;
   state.format = v > 0 ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
-  $('adj-size').value = v;
+  $('adj-size').value = IG_SIZES.indexOf(v);
   $('adj-size-val').textContent = String(v);
   if (state.source) updateDisplay();
 }
@@ -1010,7 +1018,7 @@ function setIgDark(dark) {
   schedulePersist();
 }
 
-$('adj-size').addEventListener('input', (e) => setIgSize(Number(e.target.value)));
+$('adj-size').addEventListener('input', (e) => setIgSize(IG_SIZES[Number(e.target.value)]));
 $('sw-blanc').addEventListener('click', () => setIgDark(false));
 $('sw-noir').addEventListener('click', () => setIgDark(true));
 $('adj-size').addEventListener('change', () => schedulePersist());
