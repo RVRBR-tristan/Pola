@@ -187,8 +187,8 @@ export const assetsReady = Promise.all(
 /* ── Composition du polaroid ── */
 
 // `photo` est un canvas déjà passé par applyPreset, au ratio de l'ouverture.
-export function renderPolaroid(target, frame, photo) {
-  const s = frame.scale;
+export function renderPolaroid(target, frame, photo, boost = 1) {
+  const s = frame.scale * boost;
   const W = frame.W * s, H = frame.H * s;
   target.width = W;
   target.height = H;

@@ -512,9 +512,26 @@ function updateLiveFrame() {
 
 /* ── Export ─────────────────────────────────────────────── */
 
-function exportCanvas() {
-  if (state.format === 'polaroid') return polaroidCanvas;
-  return renderInstagram(polaroidCanvas, state.igDark, { size: state.igSize, bg: state.igBg });
+// Facteur de sur-échantillonnage à l'export : vise ~2400 px de grand
+// côté. La photo est re-rendue depuis la source pleine résolution (nette) ;
+// seul le papier du cadre est interpolé.
+function exportBoost(frame) {
+  return Math.min(3, Math.max(1, 2400 / (Math.max(frame.W, frame.H) * frame.scale)));
+}
+
+async function exportCanvas() {
+  await assetsReady;
+  const boost = exportBoost(state.frame);
+  let pc = polaroidCanvas;
+  if (boost > 1.01 && state.source) {
+    const photo = cropToOpening(state.source, state.frame, boost);
+    applyPreset(photo, state.preset, state.seed, currentAdjust());
+    if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
+    pc = document.createElement('canvas');
+    renderPolaroid(pc, state.frame, photo, boost);
+  }
+  if (state.format === 'polaroid') return pc;
+  return renderInstagram(pc, state.igDark, { size: state.igSize, bg: state.igBg });
 }
 
 function toBlob(canvas) {
@@ -540,7 +557,7 @@ function downloadBlob(blob, name) {
 }
 
 async function download() {
-  const blob = await toBlob(exportCanvas());
+  const blob = await toBlob(await exportCanvas());
   downloadBlob(blob, `pola-${stamp()}.png`);
   const btn = $('btn-download');
   btn.classList.add('is-done');
@@ -829,11 +846,12 @@ async function renderShotCanvas(shot) {
   await assetsReady;
   const st = stateFromSettings(shot.settings);
   const source = await blobToCanvas(shot.source);
-  const photo = cropToOpening(source, st.frame, 1, st);
+  const boost = exportBoost(st.frame);
+  const photo = cropToOpening(source, st.frame, boost, st);
   applyPreset(photo, st.preset, st.seed, currentAdjust(st));
   if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
   const pc = document.createElement('canvas');
-  renderPolaroid(pc, st.frame, photo);
+  renderPolaroid(pc, st.frame, photo, boost);
   let framed = pc;
   if (st.format !== 'polaroid') {
     const bg = st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null;
