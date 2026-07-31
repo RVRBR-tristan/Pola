@@ -134,13 +134,35 @@ function showFocusRing(e) {
   ring.addEventListener('animationend', () => ring.remove(), { once: true });
 }
 
-$('live-window').addEventListener('click', (e) => {
-  if (!state.stream) return;
-  const pt = tapToVideoCoords(e);
-  if (!pt) return;
-  showFocusRing(e);
-  focusAt(pt);
+// Taper le viseur déclenche la capture (alternative au bouton) ; un appui
+// long vise plutôt la mise au point à cet endroit. Un glissement (défilement
+// involontaire) n'entraîne rien.
+let lwPress = null;
+$('live-window').addEventListener('pointerdown', (e) => {
+  if (!state.stream || $('btn-shutter').disabled) return;
+  lwPress = { x: e.clientX, y: e.clientY, focused: false, ev: e };
+  lwPress.timer = setTimeout(() => {
+    lwPress.focused = true; // appui long → mise au point ponctuelle
+    const pt = tapToVideoCoords(e);
+    if (pt) { showFocusRing(e); focusAt(pt); navigator.vibrate?.(8); }
+  }, 450);
 });
+$('live-window').addEventListener('pointermove', (e) => {
+  if (!lwPress) return;
+  if (Math.abs(e.clientX - lwPress.x) + Math.abs(e.clientY - lwPress.y) > 12) {
+    clearTimeout(lwPress.timer);
+    lwPress = null;
+  }
+});
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
+  $('live-window').addEventListener(ev, () => {
+    if (!lwPress) return;
+    clearTimeout(lwPress.timer);
+    const wasFocus = lwPress.focused;
+    lwPress = null;
+    if (ev === 'pointerup' && !wasFocus) triggerShutter(); // tap bref → capture
+  });
+}
 
 /* ── Capture & import ───────────────────────────────────── */
 
@@ -608,7 +630,40 @@ async function triggerShutter() {
   flash.classList.add('is-firing');
   showEditor(source);
 }
-$('btn-shutter').addEventListener('click', triggerShutter);
+// Bouton repositionnable : on le glisse vers la gauche / le centre / la
+// droite selon la main ; un appui bref déclenche. La position est conservée.
+const SHUTTER_SIDES = { left: 'flex-start', center: 'center', right: 'flex-end' };
+function setShutterSide(side) {
+  if (!SHUTTER_SIDES[side]) side = 'center';
+  document.querySelector('.controls').style.justifyContent = SHUTTER_SIDES[side];
+  try { localStorage.setItem('pola-shutter-side', side); } catch { /* stockage indispo */ }
+}
+try { setShutterSide(localStorage.getItem('pola-shutter-side') || 'center'); } catch { /* idem */ }
+
+let shutterDrag = null;
+let shutterMoved = false;
+$('btn-shutter').addEventListener('pointerdown', (e) => {
+  if ($('btn-shutter').disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  shutterDrag = { x: e.clientX };
+  shutterMoved = false;
+});
+window.addEventListener('pointermove', (e) => {
+  if (shutterDrag && Math.abs(e.clientX - shutterDrag.x) > 12) shutterMoved = true;
+});
+window.addEventListener('pointerup', (e) => {
+  if (!shutterDrag) return;
+  const x = e.clientX;
+  shutterDrag = null;
+  if (shutterMoved) {
+    const w = window.innerWidth;
+    setShutterSide(x < w / 3 ? 'left' : x > (2 * w) / 3 ? 'right' : 'center');
+    navigator.vibrate?.(10);
+  }
+});
+$('btn-shutter').addEventListener('click', () => {
+  if (shutterMoved) { shutterMoved = false; return; } // repositionnement, pas de capture
+  triggerShutter();
+});
 
 // Déclencheur matériel : bouton de volume (télécommandes Bluetooth /
 // perches à selfie qui émettent Volume ±) et touches usuelles (Entrée,
