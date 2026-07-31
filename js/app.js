@@ -519,21 +519,6 @@ function exportBoost(frame) {
   return Math.min(3, Math.max(1, 2400 / (Math.max(frame.W, frame.H) * frame.scale)));
 }
 
-async function exportCanvas() {
-  await assetsReady;
-  const boost = exportBoost(state.frame);
-  let pc = polaroidCanvas;
-  if (boost > 1.01 && state.source) {
-    const photo = cropToOpening(state.source, state.frame, boost);
-    applyPreset(photo, state.preset, state.seed, currentAdjust());
-    if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
-    pc = document.createElement('canvas');
-    renderPolaroid(pc, state.frame, photo, boost);
-  }
-  if (state.format === 'polaroid') return pc;
-  return renderInstagram(pc, state.igDark, { size: state.igSize, bg: state.igBg });
-}
-
 function toBlob(canvas) {
   return new Promise((res) => canvas.toBlob(res, 'image/png'));
 }
@@ -556,12 +541,20 @@ function downloadBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+let downloadBusy = false;
 async function download() {
-  const blob = await toBlob(await exportCanvas());
-  downloadBlob(blob, `pola-${stamp()}.png`);
+  if (downloadBusy || !state.source) return;
+  downloadBusy = true;
   const btn = $('btn-download');
-  btn.classList.add('is-done');
-  setTimeout(() => btn.classList.remove('is-done'), 1200);
+  btn.classList.remove('is-done');
+  try {
+    const outputs = await renderExports(state.source, state);
+    await downloadOutputs(outputs, `pola-${stamp()}`);
+    btn.classList.add('is-done');
+    setTimeout(() => btn.classList.remove('is-done'), 1400);
+  } finally {
+    downloadBusy = false;
+  }
 }
 
 /* ── Écouteurs ──────────────────────────────────────────── */
@@ -817,6 +810,7 @@ function stateFromSettings(s = {}) {
     cropY: s.cropY || 0,
     format: igOn ? s.format : 'polaroid',
     igSize: igOn ? (s.igSize ?? 80) : 0,
+    igDark: igOn && (!!s.igDark || s.format === 'ig-noir'),
     igBgBlob: igOn ? (s.igBg || null) : null,
   };
 }
@@ -838,35 +832,58 @@ function blobToCanvas(blob) {
   });
 }
 
-// Rend les deux sorties d'un tirage conservé :
-//  - `framed` : le polaroid complet (cadre + format polaroid ou 4:5) ;
-//  - `photo`  : la photo seule, recadrée et filtrée (film + réglages +
-//    light leak) mais SANS cadre — l'« original » filtré, avant compositing.
-async function renderShotCanvas(shot) {
+// Jeu d'exports par défaut d'un tirage — le même partout dans l'app
+// (bouton Télécharger de l'éditeur et export de masse de la galerie).
+// `st` est l'état live ou un état dérivé des réglages conservés.
+// Retourne, dans l'ordre :
+//   1. l'original filtré, non recadré et sans cadre (le brut colorimétrié) ;
+//   2. le polaroid : filtre + recadrage + cadre, sans fond 4:5 ;
+//   3. la composition 4:5 avec fond — seulement si un fond 4:5 est activé.
+async function renderExports(source, st) {
   await assetsReady;
-  const st = stateFromSettings(shot.settings);
-  const source = await blobToCanvas(shot.source);
+  const outputs = [];
   const boost = exportBoost(st.frame);
+
+  // 1 — Original filtré, non recadré. Pas de crop, pas de cadre.
+  const original = document.createElement('canvas');
+  original.width = source.width;
+  original.height = source.height;
+  original.getContext('2d').drawImage(source, 0, 0);
+  applyPreset(original, st.preset, st.seed, currentAdjust(st));
+  outputs.push({ suffix: '-original', canvas: original });
+
+  // 2 — Polaroid : recadrage + filtre + light leak, composé sous le cadre,
+  //     re-rendu en haute résolution (sur-échantillonnage depuis la source).
   const photo = cropToOpening(source, st.frame, boost, st);
   applyPreset(photo, st.preset, st.seed, currentAdjust(st));
   if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
   const pc = document.createElement('canvas');
   renderPolaroid(pc, st.frame, photo, boost);
-  let framed = pc;
-  if (st.format !== 'polaroid') {
-    const bg = st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null;
-    framed = renderInstagram(pc, !!st.igDark, { size: st.igSize, bg });
+  outputs.push({ suffix: '', canvas: pc });
+
+  // 3 — Composition 4:5, seulement si l'utilisateur l'a activée.
+  if (st.igSize > 0) {
+    const bg = st.igBg || (st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null);
+    outputs.push({ suffix: '-4-5', canvas: renderInstagram(pc, !!st.igDark, { size: st.igSize, bg }) });
   }
-  return { framed, photo };
+
+  return outputs;
 }
 
-// Chaque photo est téléchargée individuellement dans le dossier
-// Téléchargements de l'appareil : elle est alors reprise automatiquement
-// par la sauvegarde Google Photos (dossiers d'appareil). Les déclenchements
+// Chaque fichier est téléchargé individuellement dans le dossier
+// Téléchargements de l'appareil : il est alors repris automatiquement par
+// la sauvegarde Google Photos (dossiers d'appareil). Les déclenchements
 // sont espacés car certains navigateurs mobiles ignorent des
 // téléchargements trop rapprochés — et demandent une seule fois
 // l'autorisation de télécharger plusieurs fichiers.
 const EXPORT_GAP_MS = 700;
+
+async function downloadOutputs(outputs, base) {
+  for (let j = 0; j < outputs.length; j++) {
+    downloadBlob(await toBlob(outputs[j].canvas), `${base}${outputs[j].suffix}.png`);
+    if (j < outputs.length - 1) await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
+  }
+}
 
 let exportBusy = false;
 async function exportSelected() {
@@ -885,13 +902,11 @@ async function exportSelected() {
     shots.sort((a, b) => b.createdAt - a.createdAt);
     for (let i = 0; i < shots.length; i++) {
       btn.textContent = `Enregistrement… ${i + 1}/${shots.length}`;
-      const { framed, photo } = await renderShotCanvas(shots[i]);
+      const st = stateFromSettings(shots[i].settings);
+      const source = await blobToCanvas(shots[i].source);
+      const outputs = await renderExports(source, st);
       const base = `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}`;
-      // Deux fichiers par tirage : le polaroid encadré et la photo seule
-      // (filtrée, sans cadre) pour conserver l'original.
-      downloadBlob(await toBlob(framed), `${base}.png`);
-      await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
-      downloadBlob(await toBlob(photo), `${base}-sans-cadre.png`);
+      await downloadOutputs(outputs, base);
       if (i < shots.length - 1) await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
     }
     btn.textContent = shots.length > 1 ? `Enregistrées (${shots.length})` : 'Enregistrée';
