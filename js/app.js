@@ -554,6 +554,18 @@ function stamp() {
   return stampDate(new Date());
 }
 
+// Jeton court et unique par photo exportée : garantit des noms de fichiers
+// distincts (aucun écrasement dans Téléchargements), même en ré-exportant
+// la même photo ou plusieurs prises de la même seconde. Combine un compteur
+// de session, l'horloge (ms) et un aléa.
+let exportSeq = 0;
+function exportTag() {
+  exportSeq += 1;
+  const t = Date.now().toString(36);
+  const r = Math.floor(Math.random() * 1e6).toString(36);
+  return `${t}${exportSeq.toString(36)}${r}`;
+}
+
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -571,7 +583,7 @@ async function download() {
   btn.classList.remove('is-done');
   try {
     const outputs = await renderExports(state.source, state);
-    await downloadOutputs(outputs, `pola-${stamp()}`);
+    await downloadOutputs(outputs, `pola-${stamp()}-${exportTag()}`);
     btn.classList.add('is-done');
     setTimeout(() => btn.classList.remove('is-done'), 1400);
   } finally {
@@ -982,7 +994,7 @@ async function exportSelected() {
       const st = stateFromSettings(shots[i].settings);
       const source = await blobToCanvas(shots[i].source);
       const outputs = await renderExports(source, st);
-      const base = `pola-${stampDate(new Date(shots[i].createdAt))}-${i + 1}`;
+      const base = `pola-${stampDate(new Date(shots[i].createdAt))}-${exportTag()}`;
       await downloadOutputs(outputs, base);
       if (i < shots.length - 1) await new Promise((r) => setTimeout(r, EXPORT_GAP_MS));
     }
