@@ -229,8 +229,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 44px;
-  padding: 10px 0 8px;
+  gap: 40px;
+  padding: 10px 22px 8px;
 }
 
 .ctrl {
@@ -246,10 +246,11 @@ button {
 .ctrl:active { background: var(--surface-2); }
 
 .shutter {
-  width: 80px; height: 80px;
+  width: 92px; height: 92px;
   border-radius: 50%;
   background: var(--brand);
   position: relative;
+  touch-action: none; /* le glisser repositionne le bouton */
   transition: transform 120ms ease-out, background 120ms ease-out;
   box-shadow: 0 6px 18px rgba(255, 135, 44, 0.45);
 }
