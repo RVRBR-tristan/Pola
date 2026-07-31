@@ -642,40 +642,7 @@ async function triggerShutter() {
   flash.classList.add('is-firing');
   showEditor(source);
 }
-// Bouton repositionnable : on le glisse vers la gauche / le centre / la
-// droite selon la main ; un appui bref déclenche. La position est conservée.
-const SHUTTER_SIDES = { left: 'flex-start', center: 'center', right: 'flex-end' };
-function setShutterSide(side) {
-  if (!SHUTTER_SIDES[side]) side = 'center';
-  document.querySelector('.controls').style.justifyContent = SHUTTER_SIDES[side];
-  try { localStorage.setItem('pola-shutter-side', side); } catch { /* stockage indispo */ }
-}
-try { setShutterSide(localStorage.getItem('pola-shutter-side') || 'center'); } catch { /* idem */ }
-
-let shutterDrag = null;
-let shutterMoved = false;
-$('btn-shutter').addEventListener('pointerdown', (e) => {
-  if ($('btn-shutter').disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  shutterDrag = { x: e.clientX };
-  shutterMoved = false;
-});
-window.addEventListener('pointermove', (e) => {
-  if (shutterDrag && Math.abs(e.clientX - shutterDrag.x) > 12) shutterMoved = true;
-});
-window.addEventListener('pointerup', (e) => {
-  if (!shutterDrag) return;
-  const x = e.clientX;
-  shutterDrag = null;
-  if (shutterMoved) {
-    const w = window.innerWidth;
-    setShutterSide(x < w / 3 ? 'left' : x > (2 * w) / 3 ? 'right' : 'center');
-    navigator.vibrate?.(10);
-  }
-});
-$('btn-shutter').addEventListener('click', () => {
-  if (shutterMoved) { shutterMoved = false; return; } // repositionnement, pas de capture
-  triggerShutter();
-});
+$('btn-shutter').addEventListener('click', triggerShutter);
 
 // Déclencheur matériel : bouton de volume (télécommandes Bluetooth /
 // perches à selfie qui émettent Volume ±) et touches usuelles (Entrée,
