@@ -579,7 +579,7 @@ $('btn-flash').addEventListener('click', () => {
 });
 
 let capturing = false;
-$('btn-shutter').addEventListener('click', async () => {
+async function triggerShutter() {
   if (capturing) return;
   capturing = true;
   const flash = $('flash');
@@ -607,6 +607,28 @@ $('btn-shutter').addEventListener('click', async () => {
   void flash.offsetWidth;
   flash.classList.add('is-firing');
   showEditor(source);
+}
+$('btn-shutter').addEventListener('click', triggerShutter);
+
+// Déclencheur matériel : bouton de volume (télécommandes Bluetooth /
+// perches à selfie qui émettent Volume ±) et touches usuelles (Entrée,
+// Espace) pour les accessoires et le bureau. Actif seulement sur l'écran
+// de prise de vue, caméra prête, et hors champ de saisie.
+// NB : sur Android, Chrome intercepte lui-même le bouton de volume
+// physique du téléphone et ne le transmet pas à la page — ce déclencheur
+// répond donc aux accessoires, pas nécessairement au bipeur intégré.
+const SHUTTER_KEYS = new Set([
+  'AudioVolumeUp', 'AudioVolumeDown', 'VolumeUp', 'VolumeDown',
+  'Enter', ' ', 'Spacebar',
+]);
+window.addEventListener('keydown', (e) => {
+  if (e.repeat || !SHUTTER_KEYS.has(e.key)) return;
+  if (!$('shoot').classList.contains('is-active')) return;
+  if ($('btn-shutter').disabled) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  e.preventDefault();
+  triggerShutter();
 });
 
 $('btn-flip').addEventListener('click', () => {
