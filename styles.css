@@ -118,6 +118,18 @@ button {
   justify-content: center;
   padding: 10px 24px;
   container-type: size;
+  position: relative; /* ancre l'instantané de transition (swipe) */
+}
+
+/* Instantané de la photo sortante pendant la navigation par swipe */
+.swipe-ghost {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 22px 45px rgba(30, 20, 5, 0.3));
+  will-change: transform;
 }
 
 /* Polaroid live : le viseur est déjà dans le vrai scan du cadre.
