@@ -50,8 +50,16 @@ async function startCamera() {
   const gen = ++camGen;
   stopCamera();
   try {
+    // Capture pleine hauteur du capteur, format portrait 9:16 le plus grand
+    // possible : on garde tout le cadrage, le recadrage se fait ensuite dans
+    // Réglages (zoom / rotation / déplacement).
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: state.facing, width: { ideal: 2160 }, height: { ideal: 2160 } },
+      video: {
+        facingMode: state.facing,
+        width: { ideal: 2160 },
+        height: { ideal: 3840 },
+        aspectRatio: { ideal: 9 / 16 },
+      },
       audio: false,
     });
     if (gen !== camGen) {
@@ -182,7 +190,7 @@ function captureFromVideo() {
 }
 
 function sourceFromImage(imgEl) {
-  const max = 2600;
+  const max = 3840;
   const k = Math.min(1, max / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
   const c = document.createElement('canvas');
   c.width = Math.round(imgEl.naturalWidth * k);
