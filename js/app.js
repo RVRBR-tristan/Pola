@@ -454,30 +454,65 @@ async function showEditor(source) {
   render().then(develop);
   state.sourceBlob = await canvasJpeg(source);
   schedulePersist();
+  loadEditNav();
 }
 
 // Réédition d'un polaroid conservé.
 function openShot(shot) {
-  const url = URL.createObjectURL(shot.source);
-  const img = new Image();
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const c = document.createElement('canvas');
-    c.width = img.naturalWidth;
-    c.height = img.naturalHeight;
-    c.getContext('2d').drawImage(img, 0, 0);
-    state.source = c;
-    state.sourceBlob = shot.source;
-    state.currentId = shot.id;
-    state.createdAt = shot.createdAt;
-    state.fromGallery = true;
-    applySettings(shot.settings || {});
-    showNav('films');
-    stopCamera();
-    showScreen('edit');
-    render();
-  };
-  img.src = url;
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(shot.source);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      state.source = c;
+      state.sourceBlob = shot.source;
+      state.currentId = shot.id;
+      state.createdAt = shot.createdAt;
+      state.fromGallery = true;
+      applySettings(shot.settings || {});
+      showNav('films');
+      stopCamera();
+      showScreen('edit');
+      render();
+      resolve();
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+    img.src = url;
+  });
+}
+
+// Navigation entre photos par swipe sur l'aperçu, en édition : on tient à
+// jour l'ordre de la galerie (plus récent d'abord) au moment d'entrer dans
+// l'éditeur, puis on passe d'un id à l'autre sans repasser par la galerie.
+let editNavIds = [];
+async function loadEditNav() {
+  try {
+    const shots = await getAllShots();
+    shots.sort((a, b) => b.createdAt - a.createdAt);
+    editNavIds = shots.map((s) => s.id);
+  } catch { editNavIds = []; }
+}
+
+let editNavBusy = false;
+async function navigateEdit(dir) {
+  if (editNavBusy || !state.currentId) return;
+  const i = editNavIds.indexOf(state.currentId);
+  if (i < 0) return;
+  const j = i + dir;
+  if (j < 0 || j >= editNavIds.length) return; // bord de liste : rien
+  editNavBusy = true;
+  try {
+    clearTimeout(persistTimer);
+    await persistCurrent();
+    const full = await getShot(editNavIds[j]).catch(() => null);
+    if (full) await openShot(full);
+  } finally {
+    editNavBusy = false;
+  }
 }
 
 function showShoot() {
@@ -744,6 +779,7 @@ async function refreshGallery() {
       if (selecting) {
         toggleSelected(shot.id, b);
       } else {
+        loadEditNav();
         getShot(shot.id).then((full) => full && openShot(full));
       }
     });
@@ -1216,6 +1252,43 @@ const endPan = () => {
 };
 renderCanvas.addEventListener('pointerup', endPan);
 renderCanvas.addEventListener('pointercancel', endPan);
+
+/* ── Swipe horizontal sur l'aperçu : photo précédente / suivante ── */
+// Hors mode recadrage (où le glissement déplace le cadrage). Un swipe vers
+// la gauche va à la photo suivante, vers la droite à la précédente.
+const outEl = $('polaroid-out');
+let editSwipe = null;
+outEl.addEventListener('pointerdown', (e) => {
+  if (ctlKey === 'crop' || !state.currentId || editNavIds.length < 2) return;
+  if (e.target.closest('button')) return; // ne pas contrarier les boutons (+ / ×)
+  editSwipe = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, active: false };
+});
+outEl.addEventListener('pointermove', (e) => {
+  if (!editSwipe || e.pointerId !== editSwipe.id) return;
+  const dx = e.clientX - editSwipe.x, dy = e.clientY - editSwipe.y;
+  if (!editSwipe.active) {
+    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+      editSwipe.active = true;
+      outEl.setPointerCapture(editSwipe.id);
+    } else if (Math.abs(dy) > 12) { editSwipe = null; return; } // geste vertical → abandon
+    else return;
+  }
+  editSwipe.dx = dx;
+  outEl.style.transition = 'none';
+  outEl.style.transform = `translateX(${dx * 0.4}px)`;
+  outEl.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 700));
+});
+const endSwipe = (commit) => {
+  if (!editSwipe) return;
+  const { dx, active } = editSwipe;
+  editSwipe = null;
+  outEl.style.transition = 'transform 180ms ease-out, opacity 180ms ease-out';
+  outEl.style.transform = '';
+  outEl.style.opacity = '';
+  if (commit && active && Math.abs(dx) > 60) navigateEdit(dx < 0 ? 1 : -1);
+};
+outEl.addEventListener('pointerup', () => endSwipe(true));
+outEl.addEventListener('pointercancel', () => endSwipe(false));
 
 // Nouvelle fuite : nouveau tirage aléatoire du motif.
 $('btn-leak-reroll').addEventListener('click', () => {
