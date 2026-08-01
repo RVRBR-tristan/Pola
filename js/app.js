@@ -270,6 +270,19 @@ async function render(fast = false) {
   }, 0);
 }
 
+// Rendu plein res immédiat (attendu) : sert à la navigation par swipe, où
+// il faut que l'aperçu soit prêt AVANT de lancer l'animation (aucun calcul
+// lourd pendant le glissement). Ne planifie pas de persistance.
+async function renderSync() {
+  if (!state.source) return;
+  await assetsReady;
+  const photo = cropToOpening(state.source, state.frame, 1);
+  applyPreset(photo, state.preset, state.seed, currentAdjust());
+  if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
+  renderPolaroid(polaroidCanvas, state.frame, photo);
+  updateDisplay();
+}
+
 // L'aperçu montre exactement ce qui sera téléchargé : le polaroid seul,
 // ou sa mise en page 4:5 (fond blanc ou noir) prête pour Instagram.
 function updateDisplay() {
@@ -325,14 +338,17 @@ function develop() {
 /* ── Galerie : persistance ──────────────────────────────── */
 
 let persistTimer;
+let dirty = false; // des réglages non enregistrés attendent-ils ?
 function schedulePersist() {
   if (!state.currentId) return;
+  dirty = true;
   clearTimeout(persistTimer);
   persistTimer = setTimeout(persistCurrent, 700);
 }
 
 async function persistCurrent() {
   if (!state.currentId || !state.sourceBlob) return;
+  dirty = false;
   const thumb = await makeThumb();
   await putShot({
     id: state.currentId,
@@ -457,10 +473,10 @@ async function showEditor(source) {
   loadEditNav();
 }
 
-// Réédition d'un polaroid conservé.
-function openShot(shot) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(shot.source);
+// Décode le blob source d'un tirage en canvas plein format.
+function loadImageCanvas(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
@@ -468,21 +484,32 @@ function openShot(shot) {
       c.width = img.naturalWidth;
       c.height = img.naturalHeight;
       c.getContext('2d').drawImage(img, 0, 0);
-      state.source = c;
-      state.sourceBlob = shot.source;
-      state.currentId = shot.id;
-      state.createdAt = shot.createdAt;
-      state.fromGallery = true;
-      applySettings(shot.settings || {});
-      showNav('films');
-      stopCamera();
-      showScreen('edit');
-      render();
-      resolve();
+      resolve(c);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image illisible')); };
     img.src = url;
   });
+}
+
+// Installe un tirage conservé dans l'état de l'éditeur (sans rendu).
+function applyShot(shot, sourceCanvas) {
+  state.source = sourceCanvas;
+  state.sourceBlob = shot.source;
+  state.currentId = shot.id;
+  state.createdAt = shot.createdAt;
+  state.fromGallery = true;
+  dirty = false;
+  applySettings(shot.settings || {});
+  showNav('films');
+  stopCamera();
+  showScreen('edit');
+}
+
+// Réédition d'un polaroid conservé.
+function openShot(shot) {
+  return loadImageCanvas(shot.source)
+    .then((c) => { applyShot(shot, c); render(); })
+    .catch(() => {});
 }
 
 // Navigation entre photos par swipe sur l'aperçu, en édition : on tient à
@@ -507,8 +534,28 @@ function snapBackPreview() {
   el.addEventListener('transitionend', () => { el.style.transition = ''; }, { once: true });
 }
 
-// Navigation avec vrai glissement : un instantané de la photo courante sort
-// d'un côté pendant que la nouvelle entre depuis le côté opposé.
+// Instantané (résolution d'affichage) de l'aperçu courant, en <img> centré,
+// positionné dans la scène par rapport au rectangle donné.
+function makeGhost(rect, stageRect) {
+  const dispW = Math.min(renderCanvas.width, Math.max(1, Math.ceil(rect.width * (window.devicePixelRatio || 1))));
+  const scale = dispW / renderCanvas.width;
+  const snap = document.createElement('canvas');
+  snap.width = dispW;
+  snap.height = Math.max(1, Math.round(renderCanvas.height * scale));
+  snap.getContext('2d').drawImage(renderCanvas, 0, 0, snap.width, snap.height);
+  const g = document.createElement('img');
+  g.className = 'swipe-ghost';
+  g.src = snap.toDataURL('image/png');
+  g.style.width = `${rect.width}px`;
+  g.style.left = `${rect.left - stageRect.left + rect.width / 2}px`;
+  g.style.top = `${rect.top - stageRect.top + rect.height / 2}px`;
+  return g;
+}
+
+// Navigation avec vrai glissement, fluide : on fige la photo sortante et la
+// nouvelle en deux instantanés bitmap, puis on ne fait glisser QUE ces
+// bitmaps (composition GPU, aucun calcul lourd pendant l'animation). Le
+// rendu de la nouvelle photo est terminé AVANT de lancer le glissement.
 async function navigateEdit(dir) {
   if (editNavBusy || !state.currentId) return;
   const el = $('polaroid-out');
@@ -517,60 +564,57 @@ async function navigateEdit(dir) {
   if (i < 0 || j < 0 || j >= editNavIds.length) { snapBackPreview(); return; }
   editNavBusy = true;
 
-  // Instantané (résolution d'affichage) de la photo sortante, positionné
-  // là où elle se trouve (glissement en cours inclus).
   const stage = el.parentElement;
   const stageRect = stage.getBoundingClientRect();
-  const rect = el.getBoundingClientRect();
-  const dispW = Math.min(renderCanvas.width, Math.max(1, Math.ceil(rect.width * (window.devicePixelRatio || 1))));
-  const scale = dispW / renderCanvas.width;
-  const snap = document.createElement('canvas');
-  snap.width = dispW;
-  snap.height = Math.max(1, Math.round(renderCanvas.height * scale));
-  snap.getContext('2d').drawImage(renderCanvas, 0, 0, snap.width, snap.height);
-  const ghost = document.createElement('img');
-  ghost.className = 'swipe-ghost';
-  ghost.src = snap.toDataURL('image/png');
-  ghost.style.width = `${rect.width}px`;
-  ghost.style.left = `${rect.left - stageRect.left + rect.width / 2}px`;
-  ghost.style.top = `${rect.top - stageRect.top + rect.height / 2}px`;
-  stage.appendChild(ghost);
 
-  // Masque l'aperçu réel pendant le chargement (le ghost tient l'écran).
+  // 1 — instantané de la photo sortante, là où elle se trouve (glissement
+  //     en cours inclus), puis on masque l'aperçu réel (layout conservé).
+  const ghostOut = makeGhost(el.getBoundingClientRect(), stageRect);
+  stage.appendChild(ghostOut);
   el.style.transition = 'none';
   el.style.transform = '';
-  el.style.opacity = '0';
+  el.style.visibility = 'hidden';
 
-  clearTimeout(persistTimer);
-  await persistCurrent();
-  const full = await getShot(editNavIds[j]).catch(() => null);
-  if (!full) {
-    ghost.remove();
-    el.style.transition = ''; el.style.transform = ''; el.style.opacity = '';
-    editNavBusy = false;
-    return;
-  }
-  await openShot(full);
-
-  // Place la nouvelle photo hors écran (côté entrant) puis glisse les deux.
-  const W = stageRect.width + 60;
-  el.style.transition = 'none';
-  el.style.transform = `translateX(${dir > 0 ? W : -W}px)`;
-  el.style.opacity = '1';
-  void el.offsetWidth; // force le reflow avant la transition
-  const ease = 'transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1)';
-  el.style.transition = ease;
-  el.style.transform = 'translateX(0)';
-  ghost.style.transition = ease;
-  ghost.style.transform = `translate(-50%, -50%) translateX(${dir > 0 ? -W : W}px)`;
-
-  const cleanup = () => {
-    ghost.remove();
-    el.style.transition = ''; el.style.transform = ''; el.style.opacity = '';
+  const fail = () => {
+    ghostOut.remove();
+    el.style.visibility = ''; el.style.transition = ''; el.style.transform = '';
     editNavBusy = false;
   };
-  el.addEventListener('transitionend', cleanup, { once: true });
-  setTimeout(cleanup, 500); // filet de sécurité si transitionend manque
+
+  // 2 — enregistre si nécessaire, charge et REND la nouvelle photo à fond.
+  if (dirty) { clearTimeout(persistTimer); await persistCurrent(); }
+  const shot = await getShot(editNavIds[j]).catch(() => null);
+  if (!shot) return fail();
+  let src;
+  try { src = await loadImageCanvas(shot.source); } catch { return fail(); }
+  applyShot(shot, src);
+  await renderSync();
+
+  // 3 — instantané de la nouvelle photo (aperçu masqué, mais bitmap prêt).
+  const ghostIn = makeGhost(el.getBoundingClientRect(), stageRect);
+  stage.appendChild(ghostIn);
+
+  // 4 — glissement des deux bitmaps uniquement.
+  const W = stageRect.width + 40;
+  ghostIn.style.transform = `translate(-50%, -50%) translateX(${dir > 0 ? W : -W}px)`;
+  void ghostIn.offsetWidth; // reflow avant transition
+  const ease = 'transform 340ms cubic-bezier(0.33, 0, 0.2, 1)';
+  ghostOut.style.transition = ease;
+  ghostIn.style.transition = ease;
+  ghostOut.style.transform = `translate(-50%, -50%) translateX(${dir > 0 ? -W : W}px)`;
+  ghostIn.style.transform = 'translate(-50%, -50%) translateX(0px)';
+
+  let done = false;
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    ghostOut.remove();
+    ghostIn.remove();
+    el.style.visibility = ''; el.style.transition = ''; el.style.transform = '';
+    editNavBusy = false;
+  };
+  ghostIn.addEventListener('transitionend', cleanup, { once: true });
+  setTimeout(cleanup, 560); // filet de sécurité si transitionend manque
 }
 
 function showShoot() {
