@@ -5,6 +5,7 @@ PWA appareil photo : capture ou importe une image, place-la dans un cadre Polaro
 ## Fonctionnalités
 
 - **Viseur live** : la prévisualisation caméra est déjà dans le cadre, avec le rendu du film sélectionné (approximation CSS temps réel).
+- **Capture pleine résolution** : la photo est prise sur toute la hauteur du capteur en portrait 9:16, à la plus haute résolution disponible ; le cadrage dans le polaroid se fait ensuite dans Réglages (zoom / rotation / déplacement), sans rien perdre de l'image d'origine. Les imports sont conservés jusqu'à 3840 px sur le grand côté.
 - **Films** : 600, SX-70, Time Zero, Go, 669, N&B 667, Bleu (Reclaimed), Duochromes Bleu/Jaune/Rouge, Expiré — calibrés d'après le catalogue Polaroid et les caractéristiques documentées ; chaque preset combine voile des noirs et plafond des blancs par canal, croisement tonal, saturation, halation, grain et vignettage, appliqués pixel par pixel sur canvas.
 - **Cadres photoréalistes** : Polaroid 600, Instax Mini et Instax Brut — de vrais scans à fenêtre transparente (`assets/frame-*.png`), la photo est composée sous l'alpha du scan. Géométries d'après les formats réels.
 - **Réglages** : exposition (± 1,2 EV), contraste, saturation, grain et flou gaussien — repliés dans le pipeline film, aperçu rapide basse résolution pendant le glissement, rendu plein au relâchement. Saturation et grain s'initialisent sur le film choisi. Onglets Réglages / Fond 4:5.
