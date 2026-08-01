@@ -896,11 +896,36 @@ function blobToCanvas(blob) {
   });
 }
 
+// L'export sans cadre suit l'orientation du cadre : portrait pour un cadre
+// vertical (ex. Instax Mini), horizontal pour un cadre carré ou paysage.
+// Si la source est déjà dans la bonne orientation, elle est conservée
+// entière (au plus gros format) ; sinon on recadre au centre le plus grand
+// rectangle de la bonne orientation.
+function orientOriginal(source, frame) {
+  const r = frame.img.w / frame.img.h;                 // largeur/hauteur de l'ouverture
+  const ar = r < 0.91 ? r : Math.max(r, 4 / 3);        // vertical → ratio portrait ; carré/paysage → ≥ 4:3
+  const targetLandscape = ar >= 1;
+  const sourceLandscape = source.width >= source.height;
+  let cw = source.width, ch = source.height;
+  if (targetLandscape !== sourceLandscape) {           // orientation à inverser : recadrage centré
+    ch = Math.round(cw / ar);
+    if (ch > source.height) { ch = source.height; cw = Math.round(ch * ar); }
+  }
+  const c = document.createElement('canvas');
+  c.width = cw;
+  c.height = ch;
+  c.getContext('2d').drawImage(
+    source, (source.width - cw) / 2, (source.height - ch) / 2, cw, ch, 0, 0, cw, ch
+  );
+  return c;
+}
+
 // Jeu d'exports par défaut d'un tirage — le même partout dans l'app
 // (bouton Télécharger de l'éditeur et export de masse de la galerie).
 // `st` est l'état live ou un état dérivé des réglages conservés.
 // Retourne, dans l'ordre :
-//   1. l'original filtré, non recadré et sans cadre (le brut colorimétrié) ;
+//   1. l'original filtré et sans cadre, orienté comme le cadre (portrait
+//      pour un cadre vertical, horizontal sinon) ;
 //   2. le polaroid : filtre + recadrage + cadre, sans fond 4:5 ;
 //   3. la composition 4:5 avec fond — seulement si un fond 4:5 est activé.
 async function renderExports(source, st) {
@@ -908,11 +933,8 @@ async function renderExports(source, st) {
   const outputs = [];
   const boost = exportBoost(st.frame);
 
-  // 1 — Original filtré, non recadré. Pas de crop, pas de cadre.
-  const original = document.createElement('canvas');
-  original.width = source.width;
-  original.height = source.height;
-  original.getContext('2d').drawImage(source, 0, 0);
+  // 1 — Original filtré, sans cadre, orienté selon le cadre.
+  const original = orientOriginal(source, st.frame);
   applyPreset(original, st.preset, st.seed, currentAdjust(st));
   outputs.push({ suffix: '-original', canvas: original });
 
