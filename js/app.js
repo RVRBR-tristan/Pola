@@ -498,21 +498,79 @@ async function loadEditNav() {
 }
 
 let editNavBusy = false;
+
+// Retour en place de l'aperçu (swipe annulé ou bord de liste).
+function snapBackPreview() {
+  const el = $('polaroid-out');
+  el.style.transition = 'transform 180ms ease-out';
+  el.style.transform = '';
+  el.addEventListener('transitionend', () => { el.style.transition = ''; }, { once: true });
+}
+
+// Navigation avec vrai glissement : un instantané de la photo courante sort
+// d'un côté pendant que la nouvelle entre depuis le côté opposé.
 async function navigateEdit(dir) {
   if (editNavBusy || !state.currentId) return;
+  const el = $('polaroid-out');
   const i = editNavIds.indexOf(state.currentId);
-  if (i < 0) return;
   const j = i + dir;
-  if (j < 0 || j >= editNavIds.length) return; // bord de liste : rien
+  if (i < 0 || j < 0 || j >= editNavIds.length) { snapBackPreview(); return; }
   editNavBusy = true;
-  try {
-    clearTimeout(persistTimer);
-    await persistCurrent();
-    const full = await getShot(editNavIds[j]).catch(() => null);
-    if (full) await openShot(full);
-  } finally {
+
+  // Instantané (résolution d'affichage) de la photo sortante, positionné
+  // là où elle se trouve (glissement en cours inclus).
+  const stage = el.parentElement;
+  const stageRect = stage.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  const dispW = Math.min(renderCanvas.width, Math.max(1, Math.ceil(rect.width * (window.devicePixelRatio || 1))));
+  const scale = dispW / renderCanvas.width;
+  const snap = document.createElement('canvas');
+  snap.width = dispW;
+  snap.height = Math.max(1, Math.round(renderCanvas.height * scale));
+  snap.getContext('2d').drawImage(renderCanvas, 0, 0, snap.width, snap.height);
+  const ghost = document.createElement('img');
+  ghost.className = 'swipe-ghost';
+  ghost.src = snap.toDataURL('image/png');
+  ghost.style.width = `${rect.width}px`;
+  ghost.style.left = `${rect.left - stageRect.left + rect.width / 2}px`;
+  ghost.style.top = `${rect.top - stageRect.top + rect.height / 2}px`;
+  stage.appendChild(ghost);
+
+  // Masque l'aperçu réel pendant le chargement (le ghost tient l'écran).
+  el.style.transition = 'none';
+  el.style.transform = '';
+  el.style.opacity = '0';
+
+  clearTimeout(persistTimer);
+  await persistCurrent();
+  const full = await getShot(editNavIds[j]).catch(() => null);
+  if (!full) {
+    ghost.remove();
+    el.style.transition = ''; el.style.transform = ''; el.style.opacity = '';
     editNavBusy = false;
+    return;
   }
+  await openShot(full);
+
+  // Place la nouvelle photo hors écran (côté entrant) puis glisse les deux.
+  const W = stageRect.width + 60;
+  el.style.transition = 'none';
+  el.style.transform = `translateX(${dir > 0 ? W : -W}px)`;
+  el.style.opacity = '1';
+  void el.offsetWidth; // force le reflow avant la transition
+  const ease = 'transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+  el.style.transition = ease;
+  el.style.transform = 'translateX(0)';
+  ghost.style.transition = ease;
+  ghost.style.transform = `translate(-50%, -50%) translateX(${dir > 0 ? -W : W}px)`;
+
+  const cleanup = () => {
+    ghost.remove();
+    el.style.transition = ''; el.style.transform = ''; el.style.opacity = '';
+    editNavBusy = false;
+  };
+  el.addEventListener('transitionend', cleanup, { once: true });
+  setTimeout(cleanup, 500); // filet de sécurité si transitionend manque
 }
 
 function showShoot() {
@@ -1274,21 +1332,23 @@ outEl.addEventListener('pointermove', (e) => {
     else return;
   }
   editSwipe.dx = dx;
+  // L'aperçu suit le doigt (glissement réel, sans fondu).
   outEl.style.transition = 'none';
-  outEl.style.transform = `translateX(${dx * 0.4}px)`;
-  outEl.style.opacity = String(Math.max(0.55, 1 - Math.abs(dx) / 700));
+  outEl.style.transform = `translateX(${dx}px)`;
 });
 const endSwipe = (commit) => {
   if (!editSwipe) return;
   const { dx, active } = editSwipe;
   editSwipe = null;
-  outEl.style.transition = 'transform 180ms ease-out, opacity 180ms ease-out';
-  outEl.style.transform = '';
-  outEl.style.opacity = '';
-  if (commit && active && Math.abs(dx) > 60) navigateEdit(dx < 0 ? 1 : -1);
+  if (commit && active && Math.abs(dx) > 60) {
+    navigateEdit(dx < 0 ? 1 : -1); // gère lui-même le glissement complet
+  } else if (active) {
+    snapBackPreview();
+  }
 };
 outEl.addEventListener('pointerup', () => endSwipe(true));
 outEl.addEventListener('pointercancel', () => endSwipe(false));
+outEl.addEventListener('pointerleave', () => endSwipe(false));
 
 // Nouvelle fuite : nouveau tirage aléatoire du motif.
 $('btn-leak-reroll').addEventListener('click', () => {
