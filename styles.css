@@ -93,6 +93,8 @@ button {
 .icon-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .icon-btn.is-on { background: var(--brand); }
 .icon-btn.is-on svg { fill: #fff; }
+.icon-btn.is-armed { background: oklch(0.55 0.19 27); }
+.icon-btn.is-armed svg { fill: #fff; }
 
 .back {
   display: inline-flex;
