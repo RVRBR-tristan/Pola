@@ -463,6 +463,7 @@ async function showEditor(source) {
   state.cropY = 0;
   state.igBg = null;
   state.igBgBlob = null;
+  disarmDelete();
   resetAdjustsForPreset();
   showNav('films');
   stopCamera();
@@ -499,6 +500,7 @@ function applyShot(shot, sourceCanvas) {
   state.createdAt = shot.createdAt;
   state.fromGallery = true;
   dirty = false;
+  disarmDelete();
   applySettings(shot.settings || {});
   showNav('films');
   stopCamera();
@@ -1402,6 +1404,54 @@ $('btn-leak-reroll').addEventListener('click', () => {
 });
 
 $('btn-download').addEventListener('click', download);
+
+/* ── Suppression du tirage courant (éditeur), confirmation en deux temps ── */
+let deleteArmed = false;
+let deleteArmTimer;
+function disarmDelete() {
+  deleteArmed = false;
+  clearTimeout(deleteArmTimer);
+  const b = $('btn-delete-photo');
+  b.classList.remove('is-armed');
+  b.setAttribute('aria-label', 'Supprimer');
+}
+
+async function deleteCurrent() {
+  const id = state.currentId;
+  if (!id) return;
+  const i = editNavIds.indexOf(id);
+  await deleteShots([id]).catch(() => {});
+  editNavIds = editNavIds.filter((x) => x !== id);
+  state.currentId = null;
+  // Enchaîne sur la photo voisine (suivante, sinon précédente).
+  const nextId = editNavIds[i] ?? editNavIds[i - 1] ?? null;
+  if (nextId) {
+    const shot = await getShot(nextId).catch(() => null);
+    if (shot) {
+      try {
+        applyShot(shot, await loadImageCanvas(shot.source));
+        await renderSync();
+        return;
+      } catch { /* illisible : repli galerie */ }
+    }
+  }
+  showGallery(); // plus de voisin (ou échec) : retour à la galerie
+}
+
+$('btn-delete-photo').addEventListener('click', () => {
+  const b = $('btn-delete-photo');
+  if (!deleteArmed) {
+    deleteArmed = true;
+    b.classList.add('is-armed');
+    b.setAttribute('aria-label', 'Confirmer la suppression');
+    navigator.vibrate?.(8);
+    clearTimeout(deleteArmTimer);
+    deleteArmTimer = setTimeout(disarmDelete, 3000);
+    return;
+  }
+  disarmDelete();
+  deleteCurrent();
+});
 
 /* ── Démarrage ──────────────────────────────────────────── */
 
