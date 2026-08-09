@@ -728,12 +728,17 @@ async function download() {
   downloadBusy = true;
   const btn = $('btn-download');
   btn.classList.remove('is-done');
+  btn.classList.add('is-busy'); // retour visuel immédiat (spinner)
+  // Laisse le navigateur peindre l'état occupé AVANT le rendu plein res
+  // (sinon le calcul lourd bloque le fil et le spinner n'apparaît qu'après).
+  await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
   try {
     const outputs = await renderExports(state.source, state);
     await downloadOutputs(outputs, `pola-${stamp()}-${exportTag()}`);
     btn.classList.add('is-done');
     setTimeout(() => btn.classList.remove('is-done'), 1400);
   } finally {
+    btn.classList.remove('is-busy');
     downloadBusy = false;
   }
 }
