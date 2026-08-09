@@ -79,6 +79,7 @@ button {
 }
 
 .icon-btn {
+  position: relative;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -463,6 +464,20 @@ button {
 .icon-btn-primary svg { fill: #fff; }
 .icon-btn-primary:active { background: var(--brand-press); }
 .icon-btn-primary.is-done { background: oklch(0.62 0.14 150); }
+
+/* Export en cours : spinner instantané (rotation composée GPU, fluide même
+   pendant le rendu qui occupe le fil principal). */
+.icon-btn-primary.is-busy svg { opacity: 0.25; }
+.icon-btn-primary.is-busy::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: btn-spin 0.7s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 
 /* ── Réglages exposition / contraste ── */
 
