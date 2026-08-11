@@ -21,6 +21,10 @@ const state = {
   igDark: false, // fond 4:5 : blanc ou noir
   igBg: null,    // fond 4:5 en collage : canvas décodé (mémoire)
   igBgBlob: null, // même fond, blob JPEG persisté dans la galerie
+  dbl: 0,        // double exposition : 0 = désactivé, 1..100 = intensité
+  dblMode: 'screen', // fusion : screen (éclaircir) / multiply / source-over
+  dblImg: null,  // 2e image décodée (mémoire)
+  dblBlob: null, // même image, blob JPEG persisté
   leak: 0,       // light leak : 0 = désactivé, 1..100 = intensité
   leakSeed: 1,
   zoom: 100,     // recadrage : 100..300 %
@@ -262,12 +266,29 @@ async function render(fast = false) {
     const full = wantFull;
     wantFull = false;
     const photo = cropToOpening(state.source, state.frame, full ? 1 : 0.35);
+    applyDouble(photo, state.dblImg, state.dbl, state.dblMode);
     applyPreset(photo, state.preset, state.seed, currentAdjust());
     if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
     renderPolaroid(polaroidCanvas, state.frame, photo);
     updateDisplay();
     if (full) schedulePersist();
   }, 0);
+}
+
+// Double exposition : mélange une seconde image dans le canvas photo
+// (recadrée « cover »), AVANT le rendu film pour un traitement unifié.
+// `mode` : 'screen' (éclaircir), 'multiply' (assombrir) ou 'source-over'.
+function applyDouble(photo, img, intensity, mode) {
+  if (!img || !intensity) return;
+  const ctx = photo.getContext('2d');
+  const cover = Math.max(photo.width / img.width, photo.height / img.height);
+  const w = img.width * cover, h = img.height * cover;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, intensity / 100));
+  ctx.globalCompositeOperation = mode || 'screen';
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, (photo.width - w) / 2, (photo.height - h) / 2, w, h);
+  ctx.restore();
 }
 
 // Rendu plein res immédiat (attendu) : sert à la navigation par swipe, où
@@ -277,6 +298,7 @@ async function renderSync() {
   if (!state.source) return;
   await assetsReady;
   const photo = cropToOpening(state.source, state.frame, 1);
+  applyDouble(photo, state.dblImg, state.dbl, state.dblMode);
   applyPreset(photo, state.preset, state.seed, currentAdjust());
   if (state.leak > 0) applyLightLeak(photo, state.leakSeed, state.leak / 100);
   renderPolaroid(polaroidCanvas, state.frame, photo);
@@ -369,6 +391,9 @@ async function persistCurrent() {
       igSize: state.igSize,
       igDark: state.igDark,
       igBg: state.igBgBlob || null,
+      dbl: state.dbl,
+      dblMode: state.dblMode,
+      dblBg: state.dblBlob || null,
       format: state.format,
       zoom: state.zoom,
       rot: state.rot,
@@ -427,6 +452,18 @@ function applySettings(s) {
       if (state.igBgBlob === blob) { state.igBg = c; render(); }
     }).catch(() => {});
   }
+  // Double exposition : on garde le blob, on décode l'image en arrière-plan.
+  state.dbl = s.dbl || 0;
+  state.dblMode = s.dblMode || 'screen';
+  state.dblBlob = state.dbl > 0 ? (s.dblBg || null) : null;
+  state.dblImg = null;
+  if (state.dblBlob) {
+    const dblob = state.dblBlob;
+    blobToCanvas(dblob).then((c) => {
+      if (state.dblBlob === dblob) { state.dblImg = c; render(); }
+    }).catch(() => {});
+  }
+  syncDoubleControls();
   setAdjust('leak', s.leak ?? 0);
   state.leakSeed = s.leakSeed ?? state.leakSeed;
   setAdjust('zoom', s.zoom ?? 100);
@@ -463,6 +500,11 @@ async function showEditor(source) {
   state.cropY = 0;
   state.igBg = null;
   state.igBgBlob = null;
+  state.dbl = 0;
+  state.dblMode = 'screen';
+  state.dblImg = null;
+  state.dblBlob = null;
+  syncDoubleControls();
   disarmDelete();
   resetAdjustsForPreset();
   showNav('films');
@@ -1021,6 +1063,9 @@ function stateFromSettings(s = {}) {
     igSize: igOn ? (s.igSize ?? 80) : 0,
     igDark: igOn && (!!s.igDark || s.format === 'ig-noir'),
     igBgBlob: igOn ? (s.igBg || null) : null,
+    dbl: s.dbl || 0,
+    dblMode: s.dblMode || 'screen',
+    dblBlob: s.dbl > 0 ? (s.dblBg || null) : null,
   };
 }
 
@@ -1077,15 +1122,19 @@ async function renderExports(source, st) {
   await assetsReady;
   const outputs = [];
   const boost = exportBoost(st.frame);
+  // Double exposition : image live si dispo, sinon décodée depuis le blob.
+  const dblImg = st.dblImg || (st.dblBlob ? await loadImageCanvas(st.dblBlob).catch(() => null) : null);
 
   // 1 — Original filtré, sans cadre, orienté selon le cadre.
   const original = orientOriginal(source, st.frame);
+  applyDouble(original, dblImg, st.dbl, st.dblMode);
   applyPreset(original, st.preset, st.seed, currentAdjust(st));
   outputs.push({ suffix: '-original', canvas: original });
 
   // 2 — Polaroid : recadrage + filtre + light leak, composé sous le cadre,
   //     re-rendu en haute résolution (sur-échantillonnage depuis la source).
   const photo = cropToOpening(source, st.frame, boost, st);
+  applyDouble(photo, dblImg, st.dbl, st.dblMode);
   applyPreset(photo, st.preset, st.seed, currentAdjust(st));
   if (st.leak > 0) applyLightLeak(photo, st.leakSeed, st.leak / 100);
   const pc = document.createElement('canvas');
@@ -1213,7 +1262,7 @@ for (const nav of Object.keys(NAV_PANES)) {
 
 const CONTROL_ROWS = {
   expo: 'row-expo', contrast: 'row-contrast', sat: 'row-sat',
-  grain: 'row-grain', blur: 'row-blur', fond: 'row-fond', crop: 'row-crop',
+  grain: 'row-grain', blur: 'row-blur', double: 'row-double', fond: 'row-fond', crop: 'row-crop',
 };
 let ctlKey = null;
 let ctlPrev = null;
@@ -1222,7 +1271,9 @@ function openControl(key) {
   ctlKey = key;
   if (key === 'fond') ctlPrev = state.igSize;
   else if (key === 'crop') ctlPrev = { zoom: state.zoom, rot: state.rot, x: state.cropX, y: state.cropY };
+  else if (key === 'double') ctlPrev = { dbl: state.dbl, mode: state.dblMode, img: state.dblImg, blob: state.dblBlob };
   else ctlPrev = state[key];
+  if (key === 'double') syncDoubleControls();
   for (const [k, row] of Object.entries(CONTROL_ROWS)) $(row).hidden = k !== key;
   $('drawer-reglages').hidden = true;
   $('drawer-control').hidden = false;
@@ -1237,6 +1288,12 @@ function closeControl(apply) {
       setAdjust('rot', ctlPrev.rot);
       state.cropX = ctlPrev.x;
       state.cropY = ctlPrev.y;
+    } else if (ctlKey === 'double') {
+      state.dbl = ctlPrev.dbl;
+      state.dblMode = ctlPrev.mode;
+      state.dblImg = ctlPrev.img;
+      state.dblBlob = ctlPrev.blob;
+      syncDoubleControls();
     } else {
       setAdjust(ctlKey, ctlPrev);
     }
@@ -1335,6 +1392,68 @@ $('ig-bg-remove').addEventListener('click', () => {
   state.igBg = null;
   state.igBgBlob = null;
   if (state.source) updateDisplay();
+  schedulePersist();
+});
+
+/* ── Double exposition : seconde photo superposée ── */
+
+const DBL_MODES = [['dbl-screen', 'screen'], ['dbl-multiply', 'multiply'], ['dbl-normal', 'source-over']];
+
+function syncDoubleControls() {
+  const on = !!state.dblImg;
+  $('dbl-add').hidden = on;
+  $('dbl-body').hidden = !on;
+  $('adj-dbl').value = state.dbl;
+  $('adj-dbl-val').textContent = String(state.dbl);
+  for (const [id, mode] of DBL_MODES) {
+    const sel = state.dblMode === mode;
+    $(id).classList.toggle('is-on', sel);
+    $(id).setAttribute('aria-checked', String(sel));
+  }
+}
+
+function setDbl(v) {
+  state.dbl = v;
+  $('adj-dbl').value = v;
+  $('adj-dbl-val').textContent = String(v);
+}
+
+$('dbl-add').addEventListener('click', () => $('double-input').click());
+$('double-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const { canvas, blob } = await prepareBg(file); // ré-encode et plafonne à 2160 px
+    state.dblImg = canvas;
+    state.dblBlob = blob;
+    if (state.dbl === 0) state.dbl = 70; // active à une intensité par défaut
+    syncDoubleControls();
+    render();
+    schedulePersist();
+  } catch { /* image illisible : on ignore */ }
+});
+
+// Intensité : aperçu rapide pendant le glissement, plein res au relâchement.
+$('adj-dbl').addEventListener('input', (e) => { setDbl(Number(e.target.value)); render(true); });
+$('adj-dbl').addEventListener('change', () => { render(); schedulePersist(); });
+$('adj-dbl-val').addEventListener('click', () => { setDbl(70); render(); schedulePersist(); });
+
+for (const [id, mode] of DBL_MODES) {
+  $(id).addEventListener('click', () => {
+    state.dblMode = mode;
+    syncDoubleControls();
+    render();
+    schedulePersist();
+  });
+}
+
+$('dbl-remove').addEventListener('click', () => {
+  state.dblImg = null;
+  state.dblBlob = null;
+  state.dbl = 0;
+  syncDoubleControls();
+  render();
   schedulePersist();
 });
 
