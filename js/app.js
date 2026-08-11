@@ -483,7 +483,7 @@ function canvasJpeg(c) {
 }
 
 // Nouvelle photo (capture ou import) : nouvelle entrée de galerie.
-async function showEditor(source) {
+async function showEditor(source, overlay = null) {
   state.source = source;
   state.seed = (Math.random() * 0xffffffff) >>> 0;
   state.currentId = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -504,10 +504,17 @@ async function showEditor(source) {
   state.dblMode = 'screen';
   state.dblImg = null;
   state.dblBlob = null;
+  // Double exposition à la capture : la 2e photo devient le calque superposé.
+  if (overlay) {
+    state.dblImg = overlay;
+    state.dblBlob = await canvasJpeg(overlay);
+    state.dbl = 70;
+  }
   syncDoubleControls();
   disarmDelete();
   resetAdjustsForPreset();
-  showNav('films');
+  if (overlay) { showNav('reglages'); openControl('double'); } // ouvre le menu double expo
+  else showNav('films');
   stopCamera();
   showScreen('edit');
   render().then(develop);
@@ -834,9 +841,48 @@ async function triggerShutter() {
   flash.classList.remove('is-firing');
   void flash.offsetWidth;
   flash.classList.add('is-firing');
+  // Mode double exposition à la capture : la 1re photo est mise en attente
+  // (calque fantôme d'alignement), la 2e assemble et ouvre l'éditeur.
+  if (dblCaptureMode) {
+    if (!dblPendingBase) {
+      dblPendingBase = source;
+      const g = $('dbl-live-ghost');
+      const url = URL.createObjectURL(await canvasJpeg(source));
+      if (g.dataset.url) URL.revokeObjectURL(g.dataset.url);
+      g.dataset.url = url;
+      g.src = url;
+      g.hidden = false;
+      $('dbl-hint').hidden = false;
+      return;
+    }
+    const base = dblPendingBase;
+    clearDblCapture();
+    showEditor(base, source); // base = 1re photo, calque = 2e
+    return;
+  }
   showEditor(source);
 }
 $('btn-shutter').addEventListener('click', triggerShutter);
+
+/* ── Double exposition à la capture ── */
+let dblCaptureMode = false;
+let dblPendingBase = null;
+
+function clearDblCapture() {
+  dblPendingBase = null;
+  const g = $('dbl-live-ghost');
+  if (g.dataset.url) { URL.revokeObjectURL(g.dataset.url); delete g.dataset.url; }
+  g.hidden = true;
+  g.removeAttribute('src');
+  $('dbl-hint').hidden = true;
+}
+
+$('btn-dbl-mode').addEventListener('click', () => {
+  dblCaptureMode = !dblCaptureMode;
+  $('btn-dbl-mode').classList.toggle('is-on', dblCaptureMode);
+  $('btn-dbl-mode').setAttribute('aria-pressed', String(dblCaptureMode));
+  if (!dblCaptureMode) clearDblCapture();
+});
 
 // Déclencheur matériel : bouton de volume (télécommandes Bluetooth /
 // perches à selfie qui émettent Volume ±) et touches usuelles (Entrée,
@@ -868,6 +914,7 @@ $('btn-import').addEventListener('click', () => $('file-input').click());
 $('file-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  clearDblCapture(); // un import n'entre pas dans la capture double
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {
@@ -893,6 +940,7 @@ let galleryUrls = [];
 
 async function showGallery() {
   stopCamera();
+  clearDblCapture();
   exitSelection();
   showScreen('gallery');
   await refreshGallery();
