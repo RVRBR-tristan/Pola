@@ -609,6 +609,47 @@ button {
 .swatch.is-on { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5.5px var(--brand); }
 .swatch:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 
+/* ── Double exposition ── */
+#row-double { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+#row-double[hidden] { display: none; }
+#dbl-body { display: flex; flex-direction: column; gap: 12px; }
+#dbl-body[hidden] { display: none; }
+.dbl-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 16px;
+  transition: background 150ms ease-out, transform 120ms ease-out;
+}
+.dbl-add svg { width: 18px; height: 18px; fill: currentColor; }
+.dbl-add:active { transform: scale(0.98); background: var(--brand-press); }
+.dbl-remove {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  color: oklch(0.55 0.19 27);
+  padding: 4px 2px;
+}
+.seg-modes { display: inline-flex; gap: 6px; }
+.seg-mode {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 7px 11px;
+  border-radius: 999px;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.seg-mode.is-on { background: var(--brand); color: #fff; }
+.seg-mode:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
 .export-row {
   display: flex;
   flex-direction: column;
