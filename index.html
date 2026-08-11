@@ -23,6 +23,9 @@
       <img class="wordmark" src="assets/pola-logo.svg" alt="Pola">
       <span class="topbar-right">
         <span class="topbar-film" id="film-label">600</span>
+        <button class="icon-btn" id="btn-dbl-mode" aria-label="Double exposition" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3H5a2 2 0 0 0-2 2v10h2V5h10V3Zm4 4H9a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Zm0 12H9V9h10v10Z"/></svg>
+        </button>
         <button class="icon-btn" id="btn-flash" aria-label="Flash" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.8 22l8.7-11.5H12L13 2Z"/></svg>
         </button>
@@ -36,11 +39,13 @@
       <div class="polaroid-live" id="polaroid-live">
         <div class="polaroid-live-window" id="live-window">
           <video id="camera" autoplay playsinline muted></video>
+          <img class="dbl-live-ghost" id="dbl-live-ghost" alt="" hidden>
           <div class="camera-off" id="camera-off" hidden>
             <p>Caméra indisponible.<br>Importe une photo pour commencer.</p>
           </div>
         </div>
         <img class="polaroid-live-frame" id="live-frame" src="assets/frame-600.png" alt="">
+        <div class="dbl-hint" id="dbl-hint" hidden>2ᵉ photo — superpose et déclenche</div>
       </div>
     </div>
 
