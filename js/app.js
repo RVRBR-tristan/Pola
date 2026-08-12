@@ -371,13 +371,15 @@ function schedulePersist() {
 async function persistCurrent() {
   if (!state.currentId || !state.sourceBlob) return;
   dirty = false;
-  const thumb = await makeThumb();
-  await putShot({
+  // Capture ATOMIQUE (avant tout await) : id, source, réglages et vignette
+  // doivent tous correspondre au MÊME tirage. Sinon, si l'état bascule sur
+  // une autre photo pendant l'encodage async de la vignette, on écrivait une
+  // entrée avec la vignette (donc le cadre) d'un autre tirage.
+  const shot = {
     id: state.currentId,
     createdAt: state.createdAt,
     updatedAt: Date.now(),
     source: state.sourceBlob,
-    thumb,
     settings: {
       presetId: state.preset.id,
       frameId: state.frame.id,
@@ -401,7 +403,11 @@ async function persistCurrent() {
       cropY: state.cropY,
       seed: state.seed,
     },
-  }).catch(() => {});
+  };
+  // makeThumb() capture polaroidCanvas de façon synchrone à l'appel — donc
+  // cohérent avec `shot` ci-dessus (aucun await intercalé).
+  shot.thumb = await makeThumb();
+  await putShot(shot).catch(() => {});
 }
 
 function makeThumb() {
@@ -925,9 +931,9 @@ $('file-input').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
-$('btn-back').addEventListener('click', () => {
+$('btn-back').addEventListener('click', async () => {
   clearTimeout(persistTimer);
-  persistCurrent();
+  await persistCurrent(); // termine l'écriture avant de rafraîchir la galerie
   if (state.fromGallery) showGallery();
   else showShoot();
 });
