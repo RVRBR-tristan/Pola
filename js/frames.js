@@ -142,7 +142,7 @@ export const FRAMES = [
   },
   {
     id: 'kodak-neg-160',
-    name: 'Kodag Neg 160',
+    name: 'Kodak Neg 160',
     W: 2016, H: 2400,
     img: { x: 211, y: 160, w: 1627, h: 2124 },
     scale: 0.62,
@@ -151,7 +151,7 @@ export const FRAMES = [
   },
   {
     id: 'kodak-neg-400',
-    name: 'Kodag Neg 400',
+    name: 'Kodak Neg 400',
     W: 1758, H: 2284,
     img: { x: 199, y: 274, w: 1349, h: 1790 },
     scale: 0.66,
