@@ -151,7 +151,7 @@ export const FRAMES = [
   },
   {
     id: 'kodak',
-    name: 'Kodak',
+    name: 'Négatif paysage',
     W: 1430, H: 1029,
     img: { x: 60, y: 40, w: 1322, h: 941 },
     scale: 1.5,
@@ -160,7 +160,7 @@ export const FRAMES = [
   },
   {
     id: 'film120',
-    name: 'Film 120',
+    name: 'Négatif 120',
     W: 1062, H: 974,
     img: { x: 108, y: 76, w: 842, h: 780 },
     scale: 2,
