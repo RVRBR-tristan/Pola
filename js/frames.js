@@ -7,7 +7,7 @@
 export const FRAMES = [
   {
     id: 'p600',
-    name: 'Polaroid 600',
+    name: 'Polaroïd-01',
     W: 656, H: 792,
     img: { x: 47, y: 49, w: 568, h: 580 },
     scale: 2,
@@ -43,7 +43,7 @@ export const FRAMES = [
   },
   {
     id: 'creme',
-    name: 'Crème',
+    name: 'Polaroïd-02',
     W: 552, H: 676,
     img: { x: 36, y: 39, w: 482, h: 505 },
     scale: 2,
@@ -52,7 +52,7 @@ export const FRAMES = [
   },
   {
     id: 'perfore',
-    name: 'Perforé',
+    name: 'Polaroïd-03',
     W: 611, H: 720,
     img: { x: 44, y: 76, w: 525, h: 509 },
     scale: 2,
@@ -61,7 +61,7 @@ export const FRAMES = [
   },
   {
     id: 'froisse',
-    name: 'Froissé',
+    name: 'Polaroïd-04',
     W: 1022, H: 1240,
     img: { x: 55, y: 82, w: 903, h: 911 },
     scale: 1.5,
@@ -70,7 +70,7 @@ export const FRAMES = [
   },
   {
     id: 'patine',
-    name: 'Patiné',
+    name: 'Polaroïd-05',
     W: 1056, H: 1275,
     img: { x: 65, y: 71, w: 922, h: 944 },
     scale: 1.5,
@@ -79,7 +79,7 @@ export const FRAMES = [
   },
   {
     id: 'dechire',
-    name: 'Déchiré',
+    name: 'Polaroïd-06',
     W: 1167, H: 1402,
     img: { x: 43, y: 88, w: 1077, h: 1025 },
     scale: 1.4,
