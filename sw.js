@@ -1,4 +1,4 @@
-const CACHE = 'pola-v39';
+const CACHE = 'pola-v40';
 const SHELL = [
   './',
   'index.html',
