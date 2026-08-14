@@ -8,9 +8,9 @@ export const FRAMES = [
   {
     id: 'p600',
     name: 'Polaroïd-01',
-    W: 656, H: 792,
-    img: { x: 47, y: 49, w: 568, h: 580 },
-    scale: 2,
+    W: 1541, H: 1860,
+    img: { x: 168, y: 156, w: 1221, h: 1294 },
+    scale: 1,
     overlay: 'assets/frame-600.png',
     paper: '#f8f6f1',
   },
