@@ -139,6 +139,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4ZM12 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm0 18a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM4 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm16 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM6.3 5.3a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm11.4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-11.4 11.4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm11.4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg>
           <span>Flou</span>
         </button>
+        <button class="ric" data-key="vignette">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Zm0-13a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"/></svg>
+          <span>Vignettage</span>
+        </button>
         <button class="ric" data-key="double">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3H5a2 2 0 0 0-2 2v10h2V5h10V3Zm4 4H9a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Zm0 12H9V9h10v10Z"/></svg>
           <span>Double expo</span>
@@ -182,6 +186,11 @@
             <label for="adj-blur">Flou</label>
             <input type="range" id="adj-blur" min="0" max="100" value="0" step="1">
             <button class="adjust-val" id="adj-blur-val" title="Réinitialiser">0</button>
+          </div>
+          <div class="adjust-row" id="row-vignette" hidden>
+            <label for="adj-vignette">Vignettage</label>
+            <input type="range" id="adj-vignette" min="0" max="100" value="26" step="1">
+            <button class="adjust-val" id="adj-vignette-val" title="Réinitialiser">26</button>
           </div>
           <div id="row-fond" hidden>
             <div class="adjust-row">

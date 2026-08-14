@@ -298,7 +298,8 @@ function buildLut(preset, ch, adjust) {
 // Applique le rendu film sur un canvas (modifie le canvas en place).
 // `adjust` : réglages utilisateur — expo (EV), contrast (-1..1, s'ajoute
 // au film), sat (0..1.6, absolu, remplace celui du film), grain (alpha
-// 0..0.4, absolu), blur (0..1, flou gaussien).
+// 0..0.4, absolu), blur (0..1, flou gaussien), vignette (0..1, absolu,
+// remplace celui du film).
 export function applyPreset(canvas, preset, seed, adjust) {
   const ctx = canvas.getContext('2d');
   const { width: w, height: h } = canvas;
@@ -402,14 +403,15 @@ export function applyPreset(canvas, preset, seed, adjust) {
     ctx.drawImage(grainTile(seed), 0, 0, w, h);
   }
 
-  // 5 — Vignettage.
-  if (preset.vignette > 0) {
+  // 5 — Vignettage. Réglage utilisateur (absolu) sinon la valeur du film.
+  const vig = adjust?.vignette ?? preset.vignette;
+  if (vig > 0) {
     ctx.globalCompositeOperation = 'multiply';
     ctx.globalAlpha = 1;
     const rMax = Math.hypot(w, h) / 2;
     const grad = ctx.createRadialGradient(w / 2, h / 2, rMax * 0.45, w / 2, h / 2, rMax);
     grad.addColorStop(0, 'rgba(255,255,255,1)');
-    const v = Math.round(255 * (1 - preset.vignette * 0.55));
+    const v = Math.round(255 * (1 - vig * 0.55));
     grad.addColorStop(1, `rgb(${v},${v},${Math.min(255, v + 6)})`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
