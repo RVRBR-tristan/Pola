@@ -17,6 +17,7 @@ const state = {
   sat: 82,       // 0..160 → saturation absolue (init. sur le film)
   grain: 18,     // 0..100 → alpha 0..0,4 (init. sur le film)
   blur: 0,       // 0..100 → flou radial
+  vignette: 26,  // 0..100 → intensité du vignettage (init. sur le film)
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
   igDark: false, // fond 4:5 : blanc ou noir
   igBg: null,    // fond 4:5 en collage : canvas décodé (mémoire)
@@ -246,6 +247,7 @@ function currentAdjust(st = state) {
     sat: st.sat / 100,
     grain: st.grain / 250,
     blur: st.blur / 100,
+    vignette: st.vignette / 100,
   };
 }
 
@@ -388,6 +390,7 @@ async function persistCurrent() {
       sat: state.sat,
       grain: state.grain,
       blur: state.blur,
+      vignette: state.vignette,
       leak: state.leak,
       leakSeed: state.leakSeed,
       igSize: state.igSize,
@@ -438,6 +441,7 @@ function applySettings(s) {
   setAdjust('sat', s.sat ?? adjustDefault('sat'));
   setAdjust('grain', s.grain ?? adjustDefault('grain'));
   setAdjust('blur', s.blur || 0);
+  setAdjust('vignette', s.vignette ?? adjustDefault('vignette'));
   state.igSize = s.igSize ?? 80;
   const igOn = s.format && s.format !== 'polaroid';
   state.igDark = !!s.igDark || s.format === 'ig-noir';
@@ -1107,6 +1111,7 @@ function stateFromSettings(s = {}) {
     sat: s.sat ?? Math.round(preset.sat * 100),
     grain: s.grain ?? Math.round(preset.grain * 250),
     blur: s.blur || 0,
+    vignette: s.vignette ?? Math.round(preset.vignette * 100),
     leak: s.leak ?? 0,
     leakSeed: s.leakSeed ?? 1,
     zoom: s.zoom ?? 100,
@@ -1258,8 +1263,8 @@ $('btn-export').addEventListener('click', exportSelected);
 
 const ADJUST_IDS = {
   expo: 'adj-expo', contrast: 'adj-contrast', sat: 'adj-sat',
-  grain: 'adj-grain', blur: 'adj-blur', zoom: 'adj-zoom', rot: 'adj-rot',
-  leak: 'adj-leak',
+  grain: 'adj-grain', blur: 'adj-blur', vignette: 'adj-vignette',
+  zoom: 'adj-zoom', rot: 'adj-rot', leak: 'adj-leak',
 };
 const SIGNED = new Set(['expo', 'contrast', 'rot']);
 
@@ -1270,10 +1275,11 @@ function setAdjust(key, value) {
     SIGNED.has(key) && value > 0 ? `+${value}` : String(value);
 }
 
-// Valeur de repos : saturation et grain reprennent celles du film choisi.
+// Valeur de repos : saturation, grain et vignettage reprennent le film choisi.
 function adjustDefault(key) {
   if (key === 'sat') return Math.round(state.preset.sat * 100);
   if (key === 'grain') return Math.round(state.preset.grain * 250);
+  if (key === 'vignette') return Math.round(state.preset.vignette * 100);
   if (key === 'zoom') return 100;
   return 0;
 }
@@ -1281,6 +1287,7 @@ function adjustDefault(key) {
 function resetAdjustsForPreset() {
   setAdjust('sat', adjustDefault('sat'));
   setAdjust('grain', adjustDefault('grain'));
+  setAdjust('vignette', adjustDefault('vignette'));
 }
 
 for (const key of Object.keys(ADJUST_IDS)) {
@@ -1316,7 +1323,8 @@ for (const nav of Object.keys(NAV_PANES)) {
 
 const CONTROL_ROWS = {
   expo: 'row-expo', contrast: 'row-contrast', sat: 'row-sat',
-  grain: 'row-grain', blur: 'row-blur', double: 'row-double', fond: 'row-fond', crop: 'row-crop',
+  grain: 'row-grain', blur: 'row-blur', vignette: 'row-vignette',
+  double: 'row-double', fond: 'row-fond', crop: 'row-crop',
 };
 let ctlKey = null;
 let ctlPrev = null;
