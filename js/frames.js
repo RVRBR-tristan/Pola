@@ -260,7 +260,8 @@ export function renderInstagram(polaroidCanvas, dark, opts = {}) {
   out.width = W;
   out.height = H;
   const ctx = out.getContext('2d');
-  ctx.fillStyle = dark ? '#0c0c0d' : '#ffffff';
+  // Couleur perso (pipette) prioritaire, sinon blanc / noir.
+  ctx.fillStyle = opts.color || (dark ? '#0c0c0d' : '#ffffff');
   ctx.fillRect(0, 0, W, H);
 
   // Fond collage : la photo couvre tout le cadre 4:5 sans déformation.

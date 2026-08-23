@@ -108,6 +108,42 @@ export const PRESETS = [
     vignette: 0.18,
   },
   {
+    // Portra 160 : négatif couleur doux — faible contraste, grain fin,
+    // peaux chaudes et naturelles, saturation retenue, hautes lumières
+    // crème. Le plus délicat des Portra. (Proche du cadre Négatif Portra 160.)
+    id: 'portra160',
+    name: 'Portra 160',
+    css: 'saturate(0.9) contrast(0.94) sepia(0.06) brightness(1.02)',
+    lift: { r: 0.022, g: 0.02, b: 0.03 },
+    white: { r: 0.99, g: 0.97, b: 0.93 },
+    gamma: { r: 1.03, g: 1.0, b: 0.965 },
+    contrast: 0.08,
+    sat: 0.9,
+    splitShadow: [0, 1, 5],
+    splitHigh: [9, 4, -5],
+    bloom: 0.08,
+    grain: 0.04,
+    vignette: 0.14,
+  },
+  {
+    // Portra 400 : le négatif couleur de référence — chaud et doré,
+    // un peu plus contrasté et saturé que le 160, hautes lumières
+    // ambrées, rolloff tout en douceur. (Proche du cadre Négatif Portra 400.)
+    id: 'portra400',
+    name: 'Portra 400',
+    css: 'saturate(1.0) contrast(1.0) sepia(0.08) brightness(1.01)',
+    lift: { r: 0.03, g: 0.026, b: 0.03 },
+    white: { r: 0.99, g: 0.955, b: 0.9 },
+    gamma: { r: 1.05, g: 1.0, b: 0.95 },
+    contrast: 0.16,
+    sat: 0.96,
+    splitShadow: [2, 1, 3],
+    splitHigh: [13, 5, -8],
+    bloom: 0.1,
+    grain: 0.06,
+    vignette: 0.16,
+  },
+  {
     // Ektachrome : la diapo froide et propre — bleus affirmés, rendu
     // net et fidèle, contraste de film inversible, grain très fin.
     id: 'ekta',
