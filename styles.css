@@ -641,6 +641,40 @@ button {
 .swatch-noir { background: #0c0c0d; border-color: #0c0c0d; }
 .swatch.is-on { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5.5px var(--brand); }
 .swatch:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+/* Pipette : couleur perso prélevée sur la photo. Sans couleur choisie,
+   fond dégradé neutre ; l'icône reste lisible dans les deux cas. */
+.swatch-pick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(from 45deg, #f2b24a, #e8628a, #7a6cf0, #46c1c8, #f2b24a);
+  color: #fff;
+}
+.swatch-pick svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.55));
+}
+.polaroid-out.is-picking { cursor: crosshair; }
+.polaroid-out.is-picking #render-canvas { cursor: crosshair; }
+.pick-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(12, 12, 13, 0.82);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  z-index: 3;
+}
+.pick-hint[hidden] { display: none; }
 
 /* ── Double exposition ── */
 #row-double { display: flex; flex-direction: column; gap: 10px; width: 100%; }

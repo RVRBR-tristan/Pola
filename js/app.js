@@ -20,6 +20,7 @@ const state = {
   vignette: 26,  // 0..100 → intensité du vignettage (init. sur le film)
   igSize: 0,     // fond 4:5 : 0 = désactivé, 1..100 = taille du polaroid
   igDark: false, // fond 4:5 : blanc ou noir
+  igBgColor: null, // fond 4:5 : couleur perso (pipette) ; prioritaire sur igDark
   igBg: null,    // fond 4:5 en collage : canvas décodé (mémoire)
   igBgBlob: null, // même fond, blob JPEG persisté dans la galerie
   dbl: 0,        // double exposition : 0 = désactivé, 1..100 = intensité
@@ -51,7 +52,20 @@ const polaroidCanvas = document.createElement('canvas');
 // affichait « caméra indisponible » par-dessus le flux de celui qui
 // avait réussi.
 let camGen = 0;
-async function startCamera() {
+
+// Le viseur affiche-t-il réellement un flux caméra en direct ? Sert à ne
+// jamais montrer « caméra indisponible » alors que la caméra fonctionne.
+function hasLiveVideo() {
+  const s = video.srcObject;
+  return !!s && s.getVideoTracks && s.getVideoTracks().some((t) => t.readyState === 'live');
+}
+
+function hideCameraOff() {
+  $('camera-off').hidden = true;
+  $('btn-shutter').disabled = false;
+}
+
+async function startCamera(retry = true) {
   const gen = ++camGen;
   stopCamera();
   try {
@@ -75,10 +89,18 @@ async function startCamera() {
     state.stream = stream;
     video.srcObject = stream;
     video.classList.toggle('is-mirrored', state.facing === 'user');
-    $('camera-off').hidden = true;
-    $('btn-shutter').disabled = false;
+    hideCameraOff();
   } catch {
-    if (gen !== camGen || state.stream) return; // un flux actif existe déjà
+    if (gen !== camGen || state.stream || hasLiveVideo()) return; // un flux actif existe déjà
+    // La caméra est souvent occupée un court instant (reprise d'onglet,
+    // relâchement d'un autre démarrage) : on retente une fois avant de
+    // conclure à une indisponibilité, pour éviter un message injustifié.
+    if (retry) {
+      setTimeout(() => {
+        if (gen === camGen && !hasLiveVideo()) startCamera(false);
+      }, 600);
+      return;
+    }
     $('camera-off').hidden = false;
     $('btn-shutter').disabled = true;
   }
@@ -317,7 +339,7 @@ function updateDisplay() {
     ctx.clearRect(0, 0, renderCanvas.width, renderCanvas.height);
     ctx.drawImage(polaroidCanvas, 0, 0);
   } else {
-    const out = renderInstagram(polaroidCanvas, state.igDark, { size: state.igSize, bg: state.igBg });
+    const out = renderInstagram(polaroidCanvas, state.igDark, { size: state.igSize, bg: state.igBg, color: state.igBgColor });
     renderCanvas.width = out.width;
     renderCanvas.height = out.height;
     ctx.drawImage(out, 0, 0);
@@ -395,6 +417,7 @@ async function persistCurrent() {
       leakSeed: state.leakSeed,
       igSize: state.igSize,
       igDark: state.igDark,
+      igBgColor: state.igBgColor || null,
       igBg: state.igBgBlob || null,
       dbl: state.dbl,
       dblMode: state.dblMode,
@@ -447,10 +470,8 @@ function applySettings(s) {
   state.igDark = !!s.igDark || s.format === 'ig-noir';
   state.igSize = snapIgSize(igOn ? (s.igSize ?? 80) : 0);
   state.format = igOn ? (state.igDark ? 'ig-noir' : 'ig-blanc') : 'polaroid';
-  $('sw-blanc').classList.toggle('is-on', !state.igDark);
-  $('sw-blanc').setAttribute('aria-checked', String(!state.igDark));
-  $('sw-noir').classList.toggle('is-on', state.igDark);
-  $('sw-noir').setAttribute('aria-checked', String(state.igDark));
+  state.igBgColor = s.igBgColor || null;
+  updateBgSwatchUi();
   $('adj-size').value = IG_SIZES.indexOf(state.igSize);
   $('adj-size-val').textContent = String(state.igSize);
   // Fond 4:5 en collage : on garde le blob, on décode l'image en arrière-plan.
@@ -510,6 +531,8 @@ async function showEditor(source, overlay = null) {
   state.cropY = 0;
   state.igBg = null;
   state.igBgBlob = null;
+  state.igBgColor = null;
+  updateBgSwatchUi();
   state.dbl = 0;
   state.dblMode = 'screen';
   state.dblImg = null;
@@ -1121,6 +1144,7 @@ function stateFromSettings(s = {}) {
     format: igOn ? s.format : 'polaroid',
     igSize: igOn ? (s.igSize ?? 80) : 0,
     igDark: igOn && (!!s.igDark || s.format === 'ig-noir'),
+    igBgColor: igOn ? (s.igBgColor || null) : null,
     igBgBlob: igOn ? (s.igBg || null) : null,
     dbl: s.dbl || 0,
     dblMode: s.dblMode || 'screen',
@@ -1203,7 +1227,7 @@ async function renderExports(source, st) {
   // 3 — Composition 4:5, seulement si l'utilisateur l'a activée.
   if (st.igSize > 0) {
     const bg = st.igBg || (st.igBgBlob ? await blobToCanvas(st.igBgBlob).catch(() => null) : null);
-    outputs.push({ suffix: '-4-5', canvas: renderInstagram(pc, !!st.igDark, { size: st.igSize, bg }) });
+    outputs.push({ suffix: '-4-5', canvas: renderInstagram(pc, !!st.igDark, { size: st.igSize, bg, color: st.igBgColor }) });
   }
 
   return outputs;
@@ -1390,13 +1414,31 @@ function setIgSize(v) {
   if (state.source) updateDisplay();
 }
 
+// Reflète l'état du fond 4:5 sur les pastilles : pipette (couleur perso),
+// blanc, noir — une seule active à la fois.
+function updateBgSwatchUi() {
+  const custom = !!state.igBgColor;
+  const pick = $('sw-pick');
+  if (custom) pick.style.background = state.igBgColor;
+  else pick.style.removeProperty('background');
+  const set = (el, on) => { el.classList.toggle('is-on', on); el.setAttribute('aria-checked', String(on)); };
+  set(pick, custom);
+  set($('sw-blanc'), !custom && !state.igDark);
+  set($('sw-noir'), !custom && state.igDark);
+}
+
 function setIgDark(dark) {
   state.igDark = dark;
+  state.igBgColor = null; // le choix blanc/noir annule la couleur perso
   if (state.format !== 'polaroid') state.format = dark ? 'ig-noir' : 'ig-blanc';
-  $('sw-blanc').classList.toggle('is-on', !dark);
-  $('sw-blanc').setAttribute('aria-checked', String(!dark));
-  $('sw-noir').classList.toggle('is-on', dark);
-  $('sw-noir').setAttribute('aria-checked', String(dark));
+  updateBgSwatchUi();
+  if (state.source) updateDisplay();
+  schedulePersist();
+}
+
+function setIgBgColor(hex) {
+  state.igBgColor = hex;
+  updateBgSwatchUi();
   if (state.source) updateDisplay();
   schedulePersist();
 }
@@ -1409,6 +1451,36 @@ $('adj-size-val').addEventListener('click', () => {
   setIgSize(0);
   schedulePersist();
 });
+
+/* ── Pipette : couleur de fond 4:5 prélevée sur la photo ── */
+
+// On arme la pipette, puis un tap sur l'aperçu prélève la couleur du pixel
+// touché (échantillonné sur le canvas affiché = ce que voit l'utilisateur).
+let pickingBg = false;
+
+function setPickingBg(on) {
+  pickingBg = on;
+  $('polaroid-out').classList.toggle('is-picking', on);
+  $('pick-hint').hidden = !on;
+  $('sw-pick').setAttribute('aria-pressed', String(on));
+}
+
+$('sw-pick').addEventListener('click', () => setPickingBg(!pickingBg));
+
+// Capture avant les gestes de recadrage / swipe : le tap sert au prélèvement.
+renderCanvas.addEventListener('pointerdown', (e) => {
+  if (!pickingBg) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const rect = renderCanvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) { setPickingBg(false); return; }
+  const x = Math.max(0, Math.min(renderCanvas.width - 1, Math.round((e.clientX - rect.left) / rect.width * renderCanvas.width)));
+  const y = Math.max(0, Math.min(renderCanvas.height - 1, Math.round((e.clientY - rect.top) / rect.height * renderCanvas.height)));
+  const d = renderCanvas.getContext('2d').getImageData(x, y, 1, 1).data;
+  const hex = '#' + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+  setPickingBg(false);
+  setIgBgColor(hex);
+}, true);
 
 /* ── Fond 4:5 en collage : photo derrière le polaroid ── */
 
@@ -1649,12 +1721,11 @@ syncPresetUi();
 updateLiveFrame();
 startCamera();
 
-// Ceinture et bretelles : dès que la vidéo joue, le message d'erreur
-// n'a plus lieu d'être.
-video.addEventListener('playing', () => {
-  $('camera-off').hidden = true;
-  $('btn-shutter').disabled = false;
-});
+// Ceinture et bretelles : dès que la vidéo produit une image, le message
+// d'erreur n'a plus lieu d'être (couvre les cas où un démarrage plus lent
+// finit par aboutir après qu'un autre a affiché le message).
+video.addEventListener('playing', hideCameraOff);
+video.addEventListener('loadeddata', hideCameraOff);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopCamera();
